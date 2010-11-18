@@ -123,18 +123,16 @@
 # 
 # This is a big major release, many core modifictations in the script : Optimisation and security.
 # 
-########################
-# Security : Include Sets of RSA keys for hosts to backup (by managing id_rsa generation and changes according to the hosts)
-# Security : Add tight default iptables setup
-# Security : Use a defined username !
-# Security : Use different .htaccess login/password for each site
-# - use of uuencode in randomness pass generation
-# Added support for various config/dat files through simple variable
-#####
-# Merge all .dat files in a single one - This will render the script more flexible 
+# Security : Include Sets of RSA keys for hosts to backup (by managing id_rsa generation and changes according to the hosts) - In progress
+# Security : Add tight default iptables setup - Not yet!
+# Security : Use a defined username ! In Progress
+# Security : Use different .htaccess login/password for each site : Allmost done
+# - use of uuencode in randomness pass generation - done
+# Added support for various config/dat files through simple variable - done
+# Merge all .dat files in a single one - This will render the script more flexible - Done, but now I need to adapt the rest of the script
 # 	Issue 1 : Many distros use different locations for the sites, sometimes different usernames ; this is a pain in the *** to autodetect, and that's why it's not automatised (more fields required in config).
 #	Issue 2 : The use of different protocols (ssh and ftp) - add a field in data specifiing protocol to be used
-
+############
 # dat file specifications: Each line represents a site to backup 
 # dns;active;protocol;login;pass;loginhtacces;passhtaccess;backdns;directory;timesite;daysite;timedb;daydb;coef;GB;Priority
 #  dns: Contains the dns of the site to save
@@ -151,21 +149,14 @@
 #  daydb: Day the DB should be backed up
 #  GB: Allowed backup size
 #  Priority: Allows to define which sites are the most important ones to backup
-
 #####
-#
 # Mail loglevel : 0 NONE - 1 ERRORS ONLY - 2 Everything - 3 - 4 - 5
-# !!! When mixing ovh hosted accounts with custom dns, need to add a field in ftpovh.dat ; example: e-showcase.net 's ftp login is on aeb-racing.com ! 
+# !!! When mixing ovh hosted accounts with custom - done
 #  * port backupchecks in all backups!
 #  * Implémentation du restore de db seulement
 #  * Implementer le controle de checksums
 #  * Uniformiser les langues (anglais ou fr ou internationaliser le script?)
 #----------- V1.0 ???????  - One day perhaps !
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-################################################################################
 ################################################################################
 ################################################################################
 # 1. We Declare the variables
@@ -246,6 +237,7 @@ f_exit
 function f_isempty {
 if [ "$1" = "" ]; then
 	echo "This can't be left blank, please retry filling it"
+	sleep 2
 	return 1
 fi
 }
@@ -495,9 +487,6 @@ fi
 echo "What is your login for that protocol (compulsary)"
 read l0gin
 f_isempty $l0gin
-if [ "$?" = "1" ]; then
-	return 0
-fi
 if [ "$protocol" = "ftp" ]; then
 	echo "What is your ftp password"
 	read ftpassword
@@ -550,9 +539,6 @@ echo "What's the site's path on the server?"
 echo "!!Start at / for ssh and at ~ for ftp!!"
 read rpath
 f_isempty $rpath
-if [ "$?" = "1" ]; then
-	return 0
-fi
 echo "At what time should the site be backed up? (defaults random)"
 read timesite
 if [ "$timesite" = "" ]; then
@@ -604,21 +590,12 @@ fi
 echo "Please enter the name of the database:"
 read db
 f_isempty $db
-if [ "$?" = "1" ]; then
-	return 1
-fi
 echo "Please enter the name of that database's user:"
 read user
 f_isempty $user
-if [ "$?" = "1" ]; then
-	return 1
-fi
 echo "Please enter the corresponding password:"
 read pass
 f_isempty $pass
-if [ "$?" = "1" ]; then
-	return 1
-fi
 # </DATA RECOLLECTION>
 ########################################
 # <FILE GENERATION>
@@ -849,45 +826,25 @@ rm index.php 2>/dev/null
 
 
 function f_backupeverything {
-fonction="f_everything"
-f_debug $fonction	
-j=4
-for i in `cat sme.dat`
+fonction="f_backupeverything"
+f_debug $fonction
+j=6 #line where we want to start; leaves space for comments in dat file
+for i in `cat $datfile`
 do
-	j=$(( j + 1 ))
 	f_backupsite $j
+	j=$(( j + 1 ))
 done
 }
-
 function f_backup1site {
 fonction="f_backup1site"
 f_debug $fonction
-cat -n ftpovh.dat|cut -f 1 -d";"
-echo " "
-echo "Quel site souhaitez vous backupper ?"
+echo "Choose which site you want to delete, note it's number, and then press q to quit the list"
+sleep 2
+less -N $datfile
+echo "Please give the site's number:"
 read site
-i=`sed -n "$site"p ftpovh.dat`
-f_backupftpovh $i
-}
-function f_backup1sme {
-fonction="f_backup1sme"
-f_debug $fonction
-cat -n sme.dat|cut -f 1 -d";"
-echo " "
-echo "Quel site souhaitez vous backupper ?"
-read site
-i=`sed -n "$site"p sme.dat|cut -f 1 -d";"`
-f_backupsme $i
-}
-function f_backup1blueonyx {
-fonction="f_backup1blueonyx"
-f_debug $fonction
-cat -n blueonyx.dat|cut -f 1 -d";"
-echo " "
-echo "Quel site souhaitez vous backupper ?"
-read site
-i=`sed -n "$site"p blueonyx.dat|cut -f 1 -d";"`
-f_backupblueonyx $i
+f_backup $site
+echo "site has been backed up"
 }
 function f_backupdbftpovh {
 fonction="f_backupdbftpovh"
