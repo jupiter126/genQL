@@ -663,8 +663,8 @@ echo "$dns;$active;$protocol;$l0gin;$ftpassword;$sshkeyname;$loginhtacces;$passh
 # Eapeasy ! but so far, just:
 tar -czf var/$dns.tar.gz var/$dns && rm -Rf var/$dns && echo "########################################" && echo "Everything has been generated as should be, you can now proceed to upload"
 echo "/var/$dns.tar.gz in order to place the $genQL__dir" 
-if [ "$xprotocol" = "xssh" ]; then
-	if [ "x$sharedkey" = "xn" ]; then
+if [ "$protocol" = "ssh" ]; then
+	if [ "$sharedkey" = "n" ]; then
 		echo "key.$sshkeyname in the ~/.ssh/authorized_keys"
 	fi
 fi
@@ -691,7 +691,7 @@ echo "<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">" >
 echo "</head><body>" >> log/index.html
 for i in `ls $pwd_init/log`
 	do
-	if [ "x$i" != "xindex.html" ]; then
+	if [ $i != "index.html" ]; then
 		echo "<h1 align=\"center\" $i</h1>" >> log/index.html
 		echo "<p>" >> log/index.html
 		cat log/$i >> log/index.html
@@ -721,7 +721,7 @@ read delsite
 echo "Please confirm that this is the site you want to remove from the backup by pressing y"
 sed $delsite'q;d' $datfile 
 read confirm
-if [ "x$confirm" = "xy" ]; then
+if [ "$confirm" = "y" ]; then
 	sed -i "$delsite"d $datfile && echo "site has been removed" && echo " "
 else
 	echo "that wasn't y!, please try again" && echo " "
@@ -755,15 +755,15 @@ priority=`echo $line|cut -f 18 -d";"`
 #
 date=`date +%Y%m%d`
 f_ping $dns
-if [ "x$?" = "x1" ]; then
+if [ "$?" = "1" ]; then
 	mkdir -p $backup__dir/$dns/files $backup__dir/$dns/mysql
 	wget -q http://$dns/$genQL__dir/index.php --http-user=$loginhtacces --http-password=$passhtaccess 2>>$pwd_init/log/error.log
 	rm index.php
 	echo "Patience, $dns Is being downloaded. . ."
-	if [ "x$protocol" = "xssh" ]; then
+	if [ "$protocol" = "ssh" ]; then
 		rsync -qaEz -e ssh $l0gin@$altdns:$rpath/ $backup__dir/$dns/files/$dns/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
 		cp $backup__dir/$dns/files/$dns/$genQL__dir/mysql/*.sql.gz $backup__dir/$dns/mysql/ 2>>$pwd_init/log/error.log && echo "$dns's databases have been isolated."
-	elif [ "x$protocol" = "xftp" ]; then
+	elif [ "$protocol" = "ftp" ]; then
 		lftp -c "open $dns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php /$genQL__dir/mysql $backup__dir/$dns/mysql" 2>>$pwd_init/log/error.log && echo "Database Downloaded"
 		rm index.php
 		echo Download de $dns en cours
@@ -855,7 +855,7 @@ c=`echo $1|cut -f 3 -d";"`
 d=`echo $1|cut -f 4 -d";"`
 date=`date +%Y%m%d`
 #f_ping $b
-#if [ "x$?" = "x1" ]; then
+#if [ "$?" = "1" ]; then
 	mkdir -p $backup__dir/ftpovh/$a
 	wget -q http://www.$b/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr
 	echo Download de la db de $a en cours
