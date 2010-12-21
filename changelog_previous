@@ -1,0 +1,70 @@
+# Changelog
+
+When the changelog gets too long in the script, I put it's oldes items here
+
+#  * V0.1 (30-12-2009)
+#  * Interactive menu is working
+#  * Backups done per 1 or per batch
+#  * Generation of the genQL folder (to be put on the serv)
+#  * Listings of sme and ftpovh sites
+#  * Add sites to sme and ftpovh listings
+#  * Remove sites to sme and ftpovh listings
+#  * Restoration of sme sites
+#  * Few parameters created to call the script from cron
+#  *V0.2 (31-12-2009)
+#  * I changed the program's logical path, and changed the code accordingly to the changes.
+#  * I declared heaps of the needed menus and functions (just have to fill them now)
+#  *V0.3 (01-01-2010)
+#  * Tous les menus ont été générés selon la structure définie.
+#  * Le code a été identé convenablement.
+#  * Amélioration de la gestion des erreurs.
+#  *V0.4 (05-01-2010)
+#  * Les restore sme fonctionne, juste penser a mettre un user www sur la machine pour run le script! (parfois il faut encore chmod sur le serveur!!!)
+#  * Il n'y a plus de commandes awk \o/
+#  * Variabilisé les données sensibles (plus facile a partager)
+#  * Remplacé dog par sed (Thanks to 'Kon' from hackits.de !!!) [Parce que sed, sedien!]
+#  * Réservé le nom de domaine! 
+#  * Le système de cron interne est au point \o/
+#  * passé le ping en fonction avec valeur de return
+#  *V0.5 (06.01.2010)  -_- First public alpha release \o/
+#  * Separated conf file
+#  * Changed the backup dir to be a variable
+#  * Changed then genQL dir's name to be a var (this enhances security on blind attacks)
+#  * Grouped some functions, got 100 lignes shorter \o/
+#  *V0.5-1
+#  * Changed ftp backup from wget to lftp
+#  * Implemented ftp restore
+#  * Implemented auto-upload of $genQL__dir on the server it was generated for.
+#  * Implemented the use of path.php; This allows the script to know the path of the site, and will serve to generate .htacces, and for ssh backups.
+#  * Implemented some kinda cleaning management to save space.
+#  * Implemented daily limit of one total backup/site (sql backups not concerned) [can be bypassed by removing files of var].
+#  * Implemented base for monthly backup differenciation
+#  * I changed the backup functions so much, that I broke the restore function \o/ (This is temporary and will be way easier for me now :p)
+#  * Fixed the chown problem on ssh restore
+#  * Implemented random times and dates (to spread backups on time on the week)
+#  * Implemented priority handling (backs-up some site sooner and some later)
+#  * Changed house to sme.
+#  *V0.59-2 (30.06.2010) Sorry about the slow dev, but I'm alone and I do it on my free time!
+#  * Added Mail logging support (with mailx)
+#  * Added debug mode (\o/ woooooooooot)
+#  *V0.59-3 (01.07.2010)
+#  * Fixed a couple of bugs happening in the date=1 condition loops.
+#  * Added a lot of data to the mails (du of sites and df of disks)
+#  * Fixed mail function (I hope ^^)
+#  V0.59-4 (06/08/2010)
+#  * Added warning mail for when var/run allready exists and script is stopped
+#  V0.59-5 (06/08/2010)
+#  * Reformatted logs yet another time
+#  * Changed onyx to blueonyx and added required menu's
+#  * Translated some stuff to english... still a lot to go :s
+#  * Now script checks it only runs once \o/
+#  * Contains an awk command again :s
+#  * I allready had 0 feedbacks for this script, so I'm not really in a hurry ^^
+#  * Added some checks to see if DB backup where done correctly in ftpovh's DB (will be ported to the rest) - ported to sme... still loads to do
+#  * Added a very basic html log generation ( f_makehtmlist )
+#  V0.59-7 (24/08/2010)
+#  * !!! Blueonyx need chown -R apache AND some mysql commands to add perms for lock table !!! mysql -p
+#		REVOKE ALL PRIVILEGES ON `$dbname` . * FROM '$username'@'localhost';
+#		GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON `$dbname` . * TO '$username'@'localhost';
+#  * did a bit more of english conversion... (way to go :'s)
+ 
