@@ -1,11 +1,4 @@
 #!/bin/bash
-# Skill-Backup - AKA GenQL
-
-# Ce petit script a ete mis au point afin d'un peu centraliser certains outils
-# dont nous avons fréquemment besoin.
-# Ce script est écrit pour être entièrement dirigé par une interface simple et
-# minimaliste, ainsi que pour faire effectuer des backups par cron grace a un 
-# lancement avec paramètres.
 
 #MIT Licence terms:
 #Copyright (c) 2010 Open Skill
@@ -30,99 +23,25 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-#
-# Written by JuPiTeR, thanks to the precious help of Nuxien (Johan Roussel).
 
-# Please be sure you don't email us telling this script is sh*t without mentioning
-# why and how you would improve it better (precise code example wanted) :) thank you ^^
 
-# This script has the following dependencies:
-#  * usual binutils, rsync, wget, mailx.
-#  * A set of RSA keys (public/private) for ssh login.
-
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!! Warning :                                            !!!!!!!!!!!!!
-#!!!!!!!!                                                      !!!!!!!!!!!!!
-#!!!!!!!! This script is EXPERIMENTAL so far, don't expect it  !!!!!!!!!!!!!
-#!!!!!!!! to run flawlessly, and don't use it as only way of   !!!!!!!!!!!!!
-#!!!!!!!! backup, unless you know what you are doing           !!!!!!!!!!!!!
-#!!!!!!!! in NO case can an author of this script be held      !!!!!!!!!!!!!
-#!!!!!!!! responsible for any inconvenience it could cause:    !!!!!!!!!!!!!
-#!!!!! You use this program at your own risk and are aware of it  !!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-# Changelog
-#  * V0.1 (30-12-2009)
-#  * Interactive menu is working
-#  * Backups done per 1 or per batch
-#  * Generation of the genQL folder (to be put on the serv)
-#  * Listings of sme and ftpovh sites
-#  * Add sites to sme and ftpovh listings
-#  * Remove sites to sme and ftpovh listings
-#  * Restoration of sme sites
-#  * Few parameters created to call the script from cron
-#  *V0.2 (31-12-2009)
-#  * I changed the program's logical path, and changed the code accordingly to the changes.
-#  * I declared heaps of the needed menus and functions (just have to fill them now)
-#  *V0.3 (01-01-2010)
-#  * Tous les menus ont été générés selon la structure définie.
-#  * Le code a été identé convenablement.
-#  * Amélioration de la gestion des erreurs.
-#  *V0.4 (05-01-2010)
-#  * Les restore sme fonctionne, juste penser a mettre un user www sur la machine pour run le script! (parfois il faut encore chmod sur le serveur!!!)
-#  * Il n'y a plus de commandes awk \o/
-#  * Variabilisé les données sensibles (plus facile a partager)
-#  * Remplacé dog par sed (Thanks to 'Kon' from hackits.de !!!) [Parce que sed, sedien!]
-#  * Réservé le nom de domaine! 
-#  * Le système de cron interne est au point \o/
-#  * passé le ping en fonction avec valeur de return
-#  *V0.5 (06.01.2010)  -_- First public alpha release \o/
-#  * Separated conf file
-#  * Changed the backup dir to be a variable
-#  * Changed then genQL dir's name to be a var (this enhances security on blind attacks)
-#  * Grouped some functions, got 100 lignes shorter \o/
-#  *V0.5-1
-#  * Changed ftp backup from wget to lftp
-#  * Implemented ftp restore
-#  * Implemented auto-upload of $genQL__dir on the server it was generated for.
-#  * Implemented the use of path.php; This allows the script to know the path of the site, and will serve to generate .htacces, and for ssh backups.
-#  * Implemented some kinda cleaning management to save space.
-#  * Implemented daily limit of one total backup/site (sql backups not concerned) [can be bypassed by removing files of var].
-#  * Implemented base for monthly backup differenciation
-#  * I changed the backup functions so much, that I broke the restore function \o/ (This is temporary and will be way easier for me now :p)
-#  * Fixed the chown problem on ssh restore
-#  * Implemented random times and dates (to spread backups on time on the week)
-#  * Implemented priority handling (backs-up some site sooner and some later)
-#  * Changed house to sme.
-#  *V0.59-2 (30.06.2010) Sorry about the slow dev, but I'm alone and I do it on my free time!
-#  * Added Mail logging support (with mailx)
-#  * Added debug mode (\o/ woooooooooot)
-#  *V0.59-3 (01.07.2010)
-#  * Fixed a couple of bugs happening in the date=1 condition loops.
-#  * Added a lot of data to the mails (du of sites and df of disks)
-#  * Fixed mail function (I hope ^^)
-#  V0.59-4 (06/08/2010)
-#  * Added warning mail for when var/run allready exists and script is stopped
-#  V0.59-5 (06/08/2010)
-#  * Reformatted logs yet another time
-#  * Changed onyx to blueonyx and added required menu's
-#  * Translated some stuff to english... still a lot to go :s
-#  * Now script checks it only runs once \o/
-#  * Contains an awk command again :s
-#  * I allready had 0 feedbacks for this script, so I'm not really in a hurry ^^
-#  * Added some checks to see if DB backup where done correctly in ftpovh's DB (will be ported to the rest) - ported to sme... still loads to do
-#  * Added a very basic html log generation ( f_makehtmlist )
-#  V0.59-7 (24/08/2010)
-#  * !!! Blueonyx need chown -R apache AND some mysql commands to add perms for lock table !!! mysql -p
-#		REVOKE ALL PRIVILEGES ON `$dbname` . * FROM '$username'@'localhost';
-#		GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON `$dbname` . * TO '$username'@'localhost';
-#  * did a bit more of english conversion... (way to go :'s)
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!! Warning :                                              !!!!!!!!!!!!!
+# !!!!!!!!                                                        !!!!!!!!!!!!!
+# !!!!!!!! This script is EXPERIMENTAL, so far, don't expect it   !!!!!!!!!!!!!
+# !!!!!!!! to run flawlessly, and don't use it as only way of     !!!!!!!!!!!!!
+# !!!!!!!! backup, unless you know what you are doing             !!!!!!!!!!!!!
+# !!!!!!!! in NO case can an author of this script be held        !!!!!!!!!!!!!
+# !!!!!!!! responsible for any inconvenience it could cause:      !!!!!!!!!!!!!
+# !!!!! You use this program at your own risk and are aware of it !!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # TODOLIST
 # V0.7 Big Leap Forward
 # 
 # This is a big major release, many core modifictations in the script : Optimisation and security.
-# 
+# ==> conf and dat files have changed format and are not retrocompatible.
+#
 # Security : Include Sets of RSA keys for hosts to backup (by managing id_rsa generation and changes according to the hosts) - In progress
 # Security : Add tight default iptables setup - Not yet!
 # Security : Use a defined username ! In Progress
@@ -498,8 +417,8 @@ if [ "x$protocol" = "xftp" ]; then
 elif [ "x$protocol" = "xssh" ]; then
 	echo "On which port does the ssh server listen (defaults to 22)?"
 	read port
-	if [ "x$port" = "" ]; then
-	port="x22"
+	if [ "x$port" = "x" ]; then
+	port="22"
 	fi
 	echo "Do you already have a shared key on that server? (y or n)"
 	read sharedkey

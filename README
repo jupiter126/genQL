@@ -1,1 +1,12 @@
-This file is still empty... Will be completed soon.
+This script is called genQL, I started developping it at the start of 2010 to backup our websites and mysql databases.
+
+Written by JuPiTeR (Nelson-Jean Gaasch), thanks to the precious help of Nuxien (Johan Roussel) and grosboulet.
+
+Please be sure you don't email us telling this script is sh*t without mentioning
+why and how you would improve it better (precise code example wanted) :) thank you ^^
+
+This script has the following dependencies:
+ * usual binutils, rsync, wget, mailx.
+ * apache2-utils sharutils (debian packages for htpasswd and uuencode)
+
+
