@@ -546,148 +546,30 @@ fi
 #	fi
 rm index.php 2>/dev/null #just in case
 }
-function f_backupeverything {
+function f_backupeverything { # backs up everything
 fonction="f_backupeverything"
 f_debug $fonction
-j=6 #line where we want to start; leaves space for comments in dat file
+j=1
 for i in `cat $datfile`
 do
-	f_backupsite $j
+	f_backup $j full
 	j=$(( j + 1 ))
 done
 }
-function f_backup1site {
+function f_backup1site { # Whole site if called with $1=1, else only db 
+full=$1
 fonction="f_backup1site"
 f_debug $fonction
-echo "Choose which site you want to delete, note it's number, and then press q to quit the list"
+echo "Choose which site you want to backup, note it's number, and then press q to quit the list"
 sleep 2
 less -N $datfile
 echo "Please give the site's number:"
 read site
-f_backup $site
-echo "site has been backed up"
-}
-function f_backupdbftpovh {
-fonction="f_backupdbftpovh"
-f_debug $fonction
-a=`echo $1|cut -f 1 -d";"`
-b=`echo $1|cut -f 2 -d";"`
-c=`echo $1|cut -f 3 -d";"`
-d=`echo $1|cut -f 4 -d";"`
-date=`date +%Y%m%d`
-#f_ping $b
-#if [ "x$?" = "x1" ]; then
-	mkdir -p $backup__dir/ftpovh/$a
-	wget -q http://www.$b/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr
-	echo Download de la db de $a en cours
-	lftp -c "open ftp.$b && user $c $d && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php /www/$genQL__dir/mysql $backup__dir/ftpovh/$a/" 2>>$pwd_init/log/error.log && echo db rapatriée
-############################
-# Check if DB backup was done
-	checkifdone=`ls $backup__dir/ftpovh/$a/mysql/ | grep "\`date +%Y%m%d\`"|tail -n 1`
-	checkifdonesize=`ls -l $backup__dir/ftpovh/$a/mysql/| grep "\`date +%Y%m%d\`"|tail -n 1|cut -f 6 -d" "`
-	echo $checkifdone
-	if [ `echo $checkifdone|wc -m` -lt "5" ]; then
-		echo "ERROR !!! Can't find today's DB backup of $a which is supposed to just have been done !!! " && echo "ERROR !!! Can't find today's DB backup of $a which is supposed to just have been done !!!" >> log/error.ftpovh.log
-	else
-		echo "$checkifdone has been correctly backed up and is $checkifdonesize in size"
-		echo "size is $checkifdonesize on `date +%Y%m%d` at `date +%R`" >> $backup__dir/ftpovh/$a/checkifdone
-		checkifdonestate=`cat $backup__dir/ftpovh/$a/checkifdone|grep $checkifdonesize|wc -l`
-		let nochangetime=$checkifdonestate/`cat ftpovh.dat|grep $a|cut -f 5 -d";"|sed 's/-/ /'|wc -w`
-		if [ "$nochangetime" -gt "1" ]; then
-			echo "!!! Warning, DB size of ftpovh $a hasn't changed in $nochangetime days" >> log/warning.ftpovh.log
-		fi
-	fi
-	rm index.php 2>/dev/null
-############################
-#fi
-}
-function f_backupdbsme {
-fonction="f_backupdbsme"
-f_debug $fonction
-i=$1
-i=`echo $i|cut -f 1 -d";"`
-f_ping $sme__domain
-if [ "$?" = "1" ]; then
-	date=`date +%Y%m%d`
-	mkdir -p $backup__dir/sme/$i/files $backup__dir/sme/$i/mysql
-	wget -q http://www.$sme__domain/$i/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr 2>>$pwd_init/log/error.log
-	rm index.php
-	echo "Patience, download de la db de "$i" en cours . . ."
-	rsync -qaEz -e ssh root@$sme__domain:/$sme__basedir/$i/html/$genQL__dir/mysql/ $backup__dir/sme/$i/mysql/ > /dev/null 2>>$pwd_init/log/error.log && echo "La DB de $i a été downloadé sans erreur"
+if [ "x$full" != "x1" ]; then #if it's not full, then we do only the db
+	f_backup $site
+else
+	f_backup $site full # else we backup everything
 fi
-}
-function f_backupdbblueonyx {
-fonction="f_backupdbblueonyx"
-f_debug $fonction
-i=$1
-i=`echo $i|cut -f 1 -d";"`
-f_ping $i
-if [ "$?" = "1" ]; then
-	date=`date +%Y%m%d`
-	mkdir -p $backup__dir/blueonyx/$i/files $backup__dir/blueonyx/$i/mysql
-	wget -q http://$i/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr 2>>$pwd_init/log/error.log
-	rm index.php
-	echo "Patience, download de la db de "$i" en cours . . ."
-	rsync -qaEz -e ssh root@$i:/home/sites/$i/web/$genQL__dir/mysql/ $backup__dir/blueonyx/$i/mysql/ > /dev/null 2>>$pwd_init/log/error.log && echo "La DB de $i a été downloadé sans erreur"
-fi
-}
-function f_backup1dbftpovh {
-fonction="f_backup1dbftpovh"
-f_debug $fonction
-cat -n ftpovh.dat|cut -f 1 -d";"
-echo " "
-echo "Quelle db souhaitez vous backupper ?"
-read site
-i=`sed -n "$site"p ftpovh.dat`
-f_backupdbftpovh $i
-}
-function f_backup1dbsme {
-fonction="f_backup1dbsme"
-f_debug $fonction
-cat -n sme.dat|cut -f 1 -d";"
-echo " "
-echo "Quel site souhaitez vous backupper ?"
-read site
-i=`sed -n "$site"p sme.dat|cut -f 1 -d";"`
-f_backupdbsme $i
-}
-function f_backupdbtoutsme {
-fonction="f_backupdbtoutsme"
-f_debug $fonction
-date=`date +%Y%m%d`
-for i in `cat sme.dat`
-do
-	i=`echo $i|cut -f 1 -d";"`
-	f_backupdbsme $i
-done
-}
-function f_backup1dbblueonyx {
-fonction="f_backup1dbblueonyx"
-f_debug $fonction
-cat -n blueonyx.dat|cut -f 1 -d";"
-echo " "
-echo "Quel site souhaitez vous backupper ?"
-read site
-i=`sed -n "$site"p blueonyx.dat|cut -f 1 -d";"`
-f_backupdbblueonyx $i
-}
-function f_backupdbtoutblueonyx {
-fonction="f_backupdbtoutblueonyx"
-f_debug $fonction
-date=`date +%Y%m%d`
-for i in `cat blueonyx.dat`
-do
-	i=`echo $i|cut -f 1 -d";"`
-	f_backupdbblueonyx $i
-done
-}
-function f_backupdbtoutftpovh {
-fonction="f_backupdbtoutftpovh"
-f_debug $fonction
-for i in `cat ftpovh.dat`
-do
-f_backupdbftpovh $i
-done
 }
 function f_restore1sme {
 fonction="f_restore1sme"
@@ -834,7 +716,7 @@ if [ "$pingtest" = "1" ]; then
 	fi
 else
 	echo "ping test disabled."
-	return 0
+	return 1
 fi
 }
 function f_nope {
