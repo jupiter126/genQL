@@ -1,0 +1,21 @@
+body
+{
+   width: 1024px;
+   margin: auto;
+   margin-top: 20px;
+   margin-bottom: 20px;    
+   background-color: 33FF66;
+}
+
+#corps
+{
+   color: black;
+   margin-left: 100px;
+   margin-right: 100px;
+   margin-bottom: 20px;
+   margin-top: 20px;
+   padding: 10px;
+   color: #000000;
+   background-color: #F0F8FF;
+   border: 2px solid black; 
+}

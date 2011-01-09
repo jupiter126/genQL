@@ -1,7 +1,8 @@
 #!/bin/bash
-
+function f_blabla {
+echo "allows to hide text in editor"
 #MIT Licence terms:
-#Copyright (c) 2010 Open Skill
+#Copyright (c) 2010 Open Skill - http://www.openskill.lu
 
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -27,45 +28,42 @@
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # !!!!!!!! Warning :                                              !!!!!!!!!!!!!
-# !!!!!!!!                                                        !!!!!!!!!!!!!
 # !!!!!!!! This script is EXPERIMENTAL, so far, don't expect it   !!!!!!!!!!!!!
 # !!!!!!!! to run flawlessly, and don't use it as only way of     !!!!!!!!!!!!!
 # !!!!!!!! backup, unless you know what you are doing             !!!!!!!!!!!!!
-# !!!!!!!! in NO case can an author of this script be held        !!!!!!!!!!!!!
-# !!!!!!!! responsible for any inconvenience it could cause:      !!!!!!!!!!!!!
-# !!!!! You use this program at your own risk and are aware of it !!!!!!!!!!!!!
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # TODOLIST
 # V0.7 Big Leap Forward
 # 
 # This is a big major release, many core modifictations in the script : Optimisation and security.
+# cleanup for readability/editablility
 # ==> conf and dat files have changed format and are not retrocompatible.
-#
 # Security : Include Sets of RSA keys for hosts to backup (by managing id_rsa generation and changes according to the hosts) - In progress
-# Security : Add tight default iptables setup - Not yet!
-# Security : Use a defined username ! In Progress
 # Security : Use different .htaccess login/password for each site : Allmost done
 # - use of uuencode in randomness pass generation - done
 # Added support for various config/dat files through simple variable - done
 # Merge all .dat files in a single one - This will render the script more flexible - Done, but now I need to adapt the rest of the script
-# 	Issue 1 : Many distros use different locations for the sites, sometimes different usernames ; this is a pain in the *** to autodetect, and that's why it's not automatised (more fields required in config).
-#	Issue 2 : The use of different protocols (ssh and ftp) - add a field in data specifiing protocol to be used
+# Removed many menus.
 ############
 # dat file specifications: Each line represents a site to backup 
-# dns;active;protocol;login;pass;loginhtacces;passhtaccess;backdns;directory;timesite;daysite;timedb;daydb;coef;GB;Priority
+# dns;active;protocol;l0gin;ftpassword;sshkeyname;loginhtacces;passhtaccess;altdns;port;rpath;timesite;daysite;timedb;daydb;coef;GB;priority
 #  dns: Contains the dns of the site to save
 #  active: 1 if site's backup is active ; 0 if it's inactive
 #  protocol: ftp or ssh
 #  login: Which login to use to login to the site
 #  pass: Password for login (ONLY for FTP ; for ssh, RSA key-authentication is used)
-#  logichtaccess: login to be used for the site's htaccess
+#  sshkeyname; name of the ssh key to be used
+#  loginhtaccess: login to be used for the site's htaccess
 #  passhtaccess: pass to be used for the site's htaccess
-#  backdns: Sometimes, the ftp to backup a site doesn't have the same address as the site itself, this is where you declare it
-#  directory: Where on the server is the directory? (important for the .htaccess)
+#  altdns: Sometimes, the ftp to backup a site doesn't have the same address as the site itself, this is where you declare it
+#  port: does the ftp/ssh service run on a particular port?
+#  rpath: Where on the server is the directory? (important for the .htaccess)
 #  timesite: Time where the site should be backed-up
 #  daysite: Day the site should be backed up
+#  timedb: time of the db backup
 #  daydb: Day the DB should be backed up
+#  coef: coeficient of space
 #  GB: Allowed backup size
 #  Priority: Allows to define which sites are the most important ones to backup
 #####
@@ -77,6 +75,7 @@
 #  * Uniformiser les langues (anglais ou fr ou internationaliser le script?)
 #----------- V1.0 ???????  - One day perhaps !
 ################################################################################
+}
 ################################################################################
 # 1. We Declare the variables
 pwd_init=`pwd` # don't edit this one !
@@ -88,32 +87,20 @@ rsabits=4096 #set the size of RSA key you want
 datfile=datfile.dat #which datfile should be used
 htstrength=18 #desired size of htaccess credentials.
 conffile=genQL.conf #which conf file should be used
-# Debug mode (1 Enable - 0 Disable )
-debug=0
+debug=0 # Debug mode (1 Enable - 0 Disable )
 pingtest=1
-################################################################################
-# 2. We create the required foldertree
-################################################################################
-mkdir -p var log $backup__dir
-touch $datfile
-# Start is logged
-echo "$0 $1 started on `date +%Y%m%d` at `date +%R` " >> log/backup.log
-################################################################################
-# Debug Mode tells when/if it crashes (var must be set on 1)
-function f_debug {
+mkdir -p var log $backup__dir && touch $datfile # 2. We create the required foldertree
+echo "$0 $1 started on `date +%Y%m%d` at `date +%R` " >> log/backup.log # Start is logged
+function f_debug { # Debug mode helps tracing where crashes occur (if $debug var is set on 1)
 if [ "x$debug" = "x1" ]; then
-	echo "debug = $1"  && echo "pwd = `pwd`"
+	echo "debug = $1"  && echo "pwd = `pwd`" && 
 	echo "debug = $1" >> log/debug.log && echo "pwd = `pwd`" >> log/debug.log
 fi
 }
-################################################################################
-# Maillog mails the logs to $admin__mail (set in conf file)
-function f_maillog {
+function f_maillog { # Mails the logs to $admin__mail
 fonction="f_maillog"
 f_debug $fonction
-##########################################################################################################""
-# Send 1 mail per day = default -- and a mail directly if an error is reported.
-if [ `date +%H` = 23 ]; then
+if [ `date +%H` = 23 ]; then # Time of mail sending is 23
 	rm log/index.html
 	echo "Maillog started on `date +%d%m%Y` at `date +%R`" >> log/genQL.log 
 	echo " " >> log/genQL.log && echo "Maillog started on `date +%d%m%Y` at `date +%R`"
@@ -136,33 +123,26 @@ if [ `date +%H` = 23 ]; then
 	cat log/genQL.log | mailx -s "genQL-`date +%d%m%Y`" $admin__mail && rm log/genQL.log && echo "Info mail should have been sent"
 fi
 }
-################################################################################
-# Exit
-function f_exit {
+function f_exit { # Exits "cleanly"
 fonction="f_exit"
 f_debug $fonction
 cd $pwd_init
 rm ${pidfile} && f_maillog && echo "we got out \"properly\""
 exit 0
 }
-################################################################################
-trap bashtrap INT 
-bashtrap() 
-{
+trap bashtrap INT # Catches control-C
+bashtrap() {
 echo "You termintated the program, calling f_exit" && echo "Bashtrap killed program on `date +%d%m%Y` at `date +%R`" >> log/backup.log
 f_exit
 }
-################################################################################
-function f_isempty {
+function f_isempty { # Checks is a compulsary field is blank
 if [ "x$1" = "x" ]; then
 	echo "This can't be left blank, please retry filling it"
 	sleep 2
 	return 1
 fi
 }
-
-################################################################################
-#  The script is only supposed to run once: 
+#  Before we do anything, we check if the script isn't allready running: 
 scriptname=`basename $0`
 pidfile=$pwd_init/var/${scriptname}.pid
 if [ -f ${pidfile} ]; then
@@ -175,9 +155,7 @@ if [ -f ${pidfile} ]; then
 fi
 pid=`ps -ef | grep ${scriptname} | head -n1 |  awk ' {print $2;} '`
 echo ${pid} > ${pidfile}
-################################################################################
-# Beginning of MENU Management (functions starting with m_ )
-function m_main {
+function m_main { # Main Menu
 while [ 1 ]
 do
 	PS3='Choose a number: '
@@ -199,182 +177,9 @@ do
 	esac
 done
 }
-function m_listing {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "blueonyx" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_listeftpovh ;;
-	sme)		f_listesme ;;
-	blueonyx)	f_listeblueonyx ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-echo " ";echo "####################################";echo " "
-}
-function m_ajout {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "blueonyx" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_ajoutftpovh ;;
-	sme)		f_ajoutsme ;;
-	blueonyx)	f_ajoutblueonyx ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_suppression {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "blueonyx" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_delftpovh ;;
-	sme)		f_delsme ;;
-	blueonyx)	f_delblueonyx ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_backup {
-PS3='Choose a number: '
-select choix in "backupsite" "backupdb" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	backupsite)	m_backupsite ;;
-	backupdb)	m_backupdb ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_backupsite {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "blueonyx" "backup1site" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_backuptoutftpovh ;;
-	sme)		f_backuptoutsme ;;
-	blueonyx)	f_backuptoutblueonyx ;;
-	backup1site)	m_backup1site ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_backup1site {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "blueonyx" "$exception" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_backup1ftpovh ;;
-	sme)		f_backup1sme ;;
-	blueonyx)	f_backup1blueonyx ;;
-	$exception)	f_backup$exception ;;
-	back) ;;
-	*)			f_nope ;;
-esac
-}
-function m_backupdb {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "blueonyx" "backup1db" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_backupdbtoutftpovh ;;
-	sme)		f_backupdbtoutsme ;;
-	blueonyx)	f_backupdbtoutblueonyx ;;
-	backup1db)	m_backup1db ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_backup1db {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "blueonyx" "$exception" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_backup1dbftpovh ;;
-	sme)		f_backup1dbsme ;;
-	blueonyx)	f_backup1dbblueonyx ;;
-	$exception)	f_backupdb$exception ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_restore {
-PS3='Choose a number: '
-select choix in "restoresite" "restoredb" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	restoresite)	m_restoresite ;;
-	restoredb)	m_restoredb ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_restoresite {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "$exception" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_restore1ftpovh ;;
-	sme)		f_restore1sme ;;
-	$exception)	f_restore$exception ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-function m_restoredb {
-PS3='Choose a number: '
-select choix in "ftpovh" "sme" "$exception" "back"
-do
-	echo " ";echo "####################################";echo " "
-	break
-done
-case $choix in
-	ftpovh)		f_restore1dbftpovh ;;
-	sme)		f_restore1dbsme ;;
-	$exception)	f_restoredb$exception ;;
-	back) ;;
-	*)		f_nope ;;
-esac
-}
-# End of MENUS Management
-################################################################################
-################################################################################
-# Start of Function's Management
-function f_genQL {
-# This function generates the filetree to be uploaded on the server, the key auth 
-# mechanism and the ".htaccess" and ".htpasswd" files.
-# !!! You should check those files before uploading them on the server
+function f_genQL { # Add sites to $datfile and generate required keys, files, ......
+# This function generates the filetree to be uploaded on the server, the key auth mechanism and the ".htaccess" and ".htpasswd" files.
+# !!! You should check those files before uploading them on the server !!!
 fonction="f_genQL"
 f_debug $fonction
 ########################################
@@ -466,7 +271,7 @@ if [ "x$timesite" = "x" ]; then
 fi
 echo "On what day(s) should the site be backed up? (defaults random)"
 read daysite
-if [ "$xdaysite" = "x" ]; then
+if [ "x$daysite" = "x" ]; then
 	f_randomday
 	daysite="$d" && echo "Day Site set to $daysite"
 fi
@@ -582,32 +387,31 @@ echo "$dns;$active;$protocol;$l0gin;$ftpassword;$sshkeyname;$loginhtacces;$passh
 # Eapeasy ! but so far, just:
 tar -czf var/$dns.tar.gz var/$dns && rm -Rf var/$dns && echo "########################################" && echo "Everything has been generated as should be, you can now proceed to upload"
 echo "/var/$dns.tar.gz in order to place the $genQL__dir" 
-if [ "$xprotocol" = "xssh" ]; then
+if [ "x$protocol" = "xssh" ]; then
 	if [ "x$sharedkey" = "xn" ]; then
 		echo "key.$sshkeyname in the ~/.ssh/authorized_keys"
 	fi
 fi
 echo "########################################"
-#Don't forget to put the right right on database with "mysql -u root -p"
+#Don't forget to put the right permissions on database with "mysql -u root -p"
 # REVOKE ALL PRIVILEGES ON `dbname` . * FROM 'dbuser'@'localhost';
 # GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON `dbname` . * TO 'dbuser'@'localhost';
 }
-##################################################################################################################
-##################################################################################################################
-function f_enablesiteauth {
-#called with $dns as arg !
+function f_enablesiteauth { # called with $dns as arg ! - sets the key in place for present server backup (we use different keys for all servers)
+keey=$0
 fonction="f_enablesiteauth"
 f_debug $fonction
-cp var/keys/$0 /home/`whoami`/.ssh/id_rsa && echo "key of $0 enabled"
+cp var/keys/key.`sed $keey'q;d' datfile.dat|cut -f 6 -d";"` /home/`whoami`/.ssh/id_rsa && echo "key of `sed $keey'q;d' datfile.dat|cut -f 1 -d";"` has been activated" && echo "key of `sed $keey'q;d' datfile.dat|cut -f 1 -d";"` has been activated" >> log/backup.log
 }
-function f_makehtmlist {
-#This function makes a simple html list log. 
+function f_makehtmlist { # This function puts the logs in xhtml format (you can customize the css)
 echo "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">" > log/index.html
-echo "<html>" >> log/index.html
+echo "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" >" >> log/index.html
 echo "<head>" >> log/index.html
-echo "<title>genQL `date +%Y%m%d` at `date +%R` report</title>" >> log/index.html
-echo "<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">" >> log/index.html
+echo "<title>GenQL log `date`</title>" >> log/index.html
+echo "<meta http-equiv=\"content-type\" content=\"text/html; charset=utf8\">" >> log/index.html
+echo "<link rel=\"stylesheet\" media=\"screen\" type=\"text/css\" title=\"Design\" href=\"design.css\" />" >> log/index.html
 echo "</head><body>" >> log/index.html
+echo "<div id=\"corps\">" >> log/index.html
 for i in `ls $pwd_init/log`
 	do
 	if [ "x$i" != "xindex.html" ]; then
@@ -617,19 +421,20 @@ for i in `ls $pwd_init/log`
 		echo "</p>" >> log/index.html
 	fi
 	done
+echo "</div>" >> log/index.html
 echo "</body>" >> log/index.html
 echo "</html>" >> log/index.html
 echo "html log generated"
 return 0
 }
-function f_list {
-fonction="f_liste"
+function f_list { #lists $datfile
+fonction="f_list"
 f_debug $fonction
 echo "press q to quit the list, use arrows to move"
 sleep 2
 less -N $datfile && return 0
 }
-function f_remove {
+function f_remove { #to remove a site from $datfile
 fonction="f_remove"
 f_debug $fonction
 echo "Choose which site you want to delete, note it's number, and then press q to quit the list"
@@ -647,12 +452,13 @@ else
 	return 1
 fi
 }
-function f_backupsite {
+function f_backup { #to backup a site
+linenumber=$1
+method=$2
+dborfull=$3
 fonction="f_backupsite"
 f_debug $fonction
-i=$1
-line=sed $i'q;d' $datfile
-#
+line=sed $linenumber'q;d' $datfile
 dns=`echo $line|cut -f 1 -d";"`
 active=`echo $line|cut -f 2 -d";"`
 protocol=`echo $line|cut -f 3 -d";"`
@@ -671,7 +477,6 @@ daydb=`echo $line|cut -f 15 -d";"`
 coef=`echo $line|cut -f 16 -d";"`
 GB=`echo $line|cut -f 17 -d";"`
 priority=`echo $line|cut -f 18 -d";"`
-#
 date=`date +%Y%m%d`
 f_ping $dns
 if [ "x$?" = "x1" ]; then
@@ -679,6 +484,7 @@ if [ "x$?" = "x1" ]; then
 	wget -q http://$dns/$genQL__dir/index.php --http-user=$loginhtacces --http-password=$passhtaccess 2>>$pwd_init/log/error.log
 	rm index.php
 	echo "Patience, $dns Is being downloaded. . ."
+if (( (( "x$2" = "xmanual")) || (( (( "x$2" = "xcron" )) && (( "x$daydb" = x"")) && ((  )) )) )); then
 	if [ "x$protocol" = "xssh" ]; then
 		rsync -qaEz -e ssh $l0gin@$altdns:$rpath/ $backup__dir/$dns/files/$dns/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
 		cp $backup__dir/$dns/files/$dns/$genQL__dir/mysql/*.sql.gz $backup__dir/$dns/mysql/ 2>>$pwd_init/log/error.log && echo "$dns's databases have been isolated."
@@ -709,7 +515,7 @@ if [ "x$?" = "x1" ]; then
 			rm $dns/$genQL__dir/mysql/$j
 		done
 		tar -cpzf $dns-$date.tar.gz $dns 2>>$pwd_init/log/error.log
-		if [ -f $i-$date.tar.gz ]; then
+		if [ -f $dns-$date.tar.gz ]; then
 			echo "$dns was saved in $backup__dir/$dns/files/$dns-$date.tar.gz" && echo "$dns was saved in $backup__dir/$dns/files/$dns-$date.tar.gz" >> $pwd_init/log/backup.log
 			cd $pwd_init
 			# FUNCTION f_clean $dns
@@ -717,31 +523,25 @@ if [ "x$?" = "x1" ]; then
 		fi
 	fi
 fi
-}
-function f_backupdb {
-fonction="f_backupdb"
-f_debug $fonction
+############################
+# Check if backup was done (replace $i with $dns ...... )
+#	checkifdone=`ls $backup__dir/sme/$i/files/ | grep "\`date +%Y%m%d\`"|tail -n 1`
+#	checkifdonesize=`ls -l $backup__dir/sme/$i/files/| grep "\`date +%Y%m%d\`"|tail -n 1|cut -f 6 -d" "`
+#	echo $checkifdone
+#	if [ `echo $checkifdone|wc -m` -lt "5" ]; then
+#		echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!! " && echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!!" >> log/error.sme.log
+#	else
+#		echo "$checkifdone has been correctly backed up and is $checkifdonesize in size"
+#		echo "size is $checkifdonesize on `date +%Y%m%d` at `date +%R`" >> $backup__dir/sme/$i/checkifdone
+#		checkifdonestate=`cat $backup__dir/sme/$i/checkifdone|grep $checkifdonesize|wc -l`
+#		let nochangetime=$checkifdonestate/`cat sme.dat|grep $i|cut -f 2 -d";"|sed 's/-/ /'|wc -w`
+#		if [ "$nochangetime" -gt "1" ]; then
+#			echo "!!! Warning, size of sme $i hasn't changed in $nochangetime days" >> log/warning.sme.log
+#		fi
+#	fi
+rm index.php 2>/dev/null #just in case
 }
 
-
-############################
-# Check if backup was done
-	checkifdone=`ls $backup__dir/sme/$i/files/ | grep "\`date +%Y%m%d\`"|tail -n 1`
-	checkifdonesize=`ls -l $backup__dir/sme/$i/files/| grep "\`date +%Y%m%d\`"|tail -n 1|cut -f 6 -d" "`
-	echo $checkifdone
-	if [ `echo $checkifdone|wc -m` -lt "5" ]; then
-		echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!! " && echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!!" >> log/error.sme.log
-	else
-		echo "$checkifdone has been correctly backed up and is $checkifdonesize in size"
-		echo "size is $checkifdonesize on `date +%Y%m%d` at `date +%R`" >> $backup__dir/sme/$i/checkifdone
-		checkifdonestate=`cat $backup__dir/sme/$i/checkifdone|grep $checkifdonesize|wc -l`
-		let nochangetime=$checkifdonestate/`cat sme.dat|grep $i|cut -f 2 -d";"|sed 's/-/ /'|wc -w`
-		if [ "$nochangetime" -gt "1" ]; then
-			echo "!!! Warning, size of sme $i hasn't changed in $nochangetime days" >> log/warning.sme.log
-		fi
-	fi
-rm index.php 2>/dev/null
-############################
 
 
 function f_backupeverything {
@@ -1154,12 +954,7 @@ do
 done
 rm tempclear
 }
-#######################################################################################################################################
 function f_backupexception {
-fonction="f_backupexception"
-f_debug $fonction
-date=`date +%Y%m%d`
-mkdir -p $backup__dir/exception/$exception/ATG-current/
 wget -q http://www.$exception.biz/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr 2>>$pwd_init/log/error.log
 echo "Patience, ca download . . ."
 rsync -qaEz -e ssh login@$exception.biz:$except_path $backup__dir/exception/$exception/ATG-current/
@@ -1167,60 +962,31 @@ echo "Patience, ca compresse . . ."
 tar -cpzf $backup__dir/exception/$exception/ATG-$date.tar.gz $backup__dir/exception/$exception/ATG-current/
 }
 function f_backupdbexception {
-fonction="f_backupdbexception"
-f_debug $fonction
-date=`date +%Y%m%d`
-mkdir -p exception/$exception/db/
 wget -q http://www.$exception.biz/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr 2>>$pwd_init/log/error.log && echo db générée.
 echo "Patience, ca download . . ."
 rsync -qaEz -e ssh login@$exception.biz:$except_path/www/genQL/mysql/ exception/$exception/db/ 2>>$pwd_init/log/error.log && echo "Patience, ca compresse . . ."
-}
-function f_restoreexception {
-fonction="f_restoreexception"
-f_debug $fonction
-}
-function f_restoredbexception {
-fonction="f_restoredbexception"
-f_debug $fonction
-}
 #Fonctions de backup cron, ces fonctions n'appellent les sites qui ne nécessitent pas l'entrée d'un mot de passe
-function c_quot {
-fonction="c_quot"
-f_debug $fonction
-date=`date +%Y%m%d`
-f_backupdbtoutsme
-f_backupdbtoutftpovh
-cat $pwd_init/log/error.log >> log/cronj-$date.log
-du -h --max-depth=1 ftpovh sme exception >> log/cronj-$date.log
 }
-function c_hebd {
-fonction="c_hebd"
-f_debug $fonction
-date=`date +%Y%m%d`
-f_backuptoutsme
-f_backuptoutftpovh
-cat $pwd_init/log/error.log >> log/crons-$date.txt
-du -h --max-depth=1 ftpovh sme exception >> log/crons-$date.txt
-}
-function c_hourly {
-fonction="c_hourly"
+function f_cron {
+fonction="f_cron"
 f_debug $fonction
 priority=0
 while [ $priority -lt "11" ]
 do
-echo "Priority = $priority "
-	for i in `cat sme.dat`
+echo "Priority = $priority "  #remove after tests
+linenumber=1
+	for i in `cat $datfile`
 	do
-		prioritX=`echo "$i"|cut -f 7 -d";"`
+		prioritX=`echo "$i"|cut -f 18 -d";"`
 		if [ "$prioritX" = "$priority" ]; then
-			echo gagné pour $i
-			hour_db=`echo "$i"|cut -f 2 -d";"|grep \`date +%H\``
-			day_site=`echo "$i"|cut -f 3 -d";"|grep \`date +%a\``
-			hour_site=`echo "$i"|cut -f 4 -d";"|grep \`date +%H\``
+			hour_db=`echo "$i"|cut -f 14 -d";"|grep \`date +%H\``
+			day_db=`echo "$i"|cut -f 15 -d";"|grep \`date +%a\``
+			day_site=`echo "$i"|cut -f 13 -d";"|grep \`date +%a\``
+			hour_site=`echo "$i"|cut -f 12 -d";"|grep \`date +%H\``
 			date=`date +%Y%m%d`
 			i=`echo $i|cut -f 1 -d";"`
 			if [ "$hour_db" != "" ]; then
-				f_backupdbsme $i
+				f_backup $linenumber cron db
 			fi
 			if [ "`date +%d`" = "01" ]; then
 				f_backupsme $i
@@ -1232,52 +998,7 @@ echo "Priority = $priority "
 				fi
 			fi
 		fi
-	done
-	for i in `cat blueonyx.dat`
-	do
-		prioritX=`echo "$i"|cut -f 7 -d";"`
-		if [ "$prioritX" = "$priority" ]; then
-			echo gagné pour $i
-			hour_db=`echo "$i"|cut -f 2 -d";"|grep \`date +%H\``
-			day_site=`echo "$i"|cut -f 3 -d";"|grep \`date +%a\``
-			hour_site=`echo "$i"|cut -f 4 -d";"|grep \`date +%H\``
-			date=`date +%Y%m%d`
-			i=`echo $i|cut -f 1 -d";"`
-			if [ "$hour_db" != "" ]; then
-				f_backupdbblueonyx $i
-			fi
-			if [ "`date +%d`" = "01" ]; then
-				f_backupblueonyx $i
-			elif [ "`date +%d`" != "01" ]; then
-				if [ "$day_site" != "" ]; then
-					if [ "$hour_site" != "" ]; then
-						f_backupblueonyx $i
-					fi
-				fi
-			fi
-		fi
-	done
-	for i in `cat ftpovh.dat`
-	do
-		prioritX=`echo "$i"|cut -f 10 -d";"`
-		if [ "$prioritX" = "$priority" ]; then
-			hour_db=`echo "$i"|cut -f 5 -d";"|grep \`date +%H\``
-			day_site=`echo "$i"|cut -f 6 -d";"|grep \`date +%a\``
-			hour_site=`echo "$i"|cut -f 7 -d";"|grep \`date +%H\``
-			date=`date +%Y%m%d`
-			if [ "$hour_db" != "" ]; then
-				f_backupdbftpovh $i
-			fi
-			if [ "`date +%d`" = "01" ]; then
-				f_backupftpovh $i
-			elif [ "`date +%d`" != "01" ]; then
-				if [ "$day_site" != "" ]; then
-					if [ "$hour_site" != "" ]; then
-						f_backupftpovh $i
-					fi
-				fi
-			fi
-		fi
+	linenumber=$(( linenumber + 1 ))
 	done
 let priority=$priority+1
 done
@@ -1303,47 +1024,20 @@ elif [ $d -eq 6 ]; then d="Sat"
 elif [ $d -eq 7 ]; then d="Sun"
 fi
 }
-################################
-# Fin gestion des FONCTIONS
-################################################################################################
-################################################################################################
-# Début Programme principal ^^
-# Si le programme est lancé avec un parametre, il va 
-# faire un backup de tous ces serveurs puis exit 0, sinon, 
-# lancer le menu "contextuel".  
-# Ce code est en FIN de fichier, c'est à dire APRES toutes les
-# déclarations de fonctions, sinon ca tourne pas.
-if [ "$1" = "" ]; then
+# End of function declaration, program entry point
+if [ "x$1" = "x" ]; then # go to main menu if there are no args
 m_main
-elif [ $1 = "ftpovh" ]; then
-	echo "le backup de tout ftpovh commence dans 3 secondes.";sleep 3
-	f_backuptoutftpovh
-	f_exit
-elif [ $1 = "quot" ]; then
-	echo "le backup de toutes les db commence dans 3 secondes.";sleep 3
-	f_quot
-	f_exit
-elif [ $1 = "hebd" ]; then
-	echo "le backup de tous les sites commence dans 3 secondes";sleep 3
-	f_hebd
-	f_exit
-elif [ $1 = "sme" ]; then
-	echo "le backup de tout sme commence dans 3 secondes.";sleep 3
-	f_backuptoutsme
-	f_exit
-elif [ $1 = "hourly" ]; then
+elif [ $1 = "cron" ]; then #if started with cron
 	c_hourly
 	f_exit
+else 
+	echo "argument not known, arg can be \"cron\""
 fi
-
-
-#####################################################
 #TODOLIST
 function f_checkbackup {
 #si heure=23; check récursivement dans tous les dossiers sql pour voir si un backup db a été effectué!)
 echo lol
 }
-
 function f_countbackup {
 #a placer dans exi
 #if heure=23
