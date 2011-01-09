@@ -45,9 +45,10 @@ echo "allows to hide text in editor"
 # Added support for various config/dat files through simple variable - done
 # Merge all .dat files in a single one - This will render the script more flexible - Done, but now I need to adapt the rest of the script
 # Removed many menus.
+# no more conf file (to few general options now to justify)
 ############
 # dat file specifications: Each line represents a site to backup 
-# dns;active;protocol;l0gin;ftpassword;sshkeyname;loginhtacces;passhtaccess;altdns;port;rpath;timesite;daysite;timedb;daydb;coef;GB;priority
+# dns;active;protocol;l0gin;ftpassword;sshkeyname;loginhtacces;passhtaccess;altdns;port;rpath;timesite;daysite;timedb;daydb;coef;GB;priority;pingtest
 #  dns: Contains the dns of the site to save
 #  active: 1 if site's backup is active ; 0 if it's inactive
 #  protocol: ftp or ssh
@@ -66,6 +67,7 @@ echo "allows to hide text in editor"
 #  coef: coeficient of space
 #  GB: Allowed backup size
 #  Priority: Allows to define which sites are the most important ones to backup
+#  Pingtest: should we perform a pingtest with this site?
 #####
 # Mail loglevel : 0 NONE - 1 ERRORS ONLY - 2 Everything - 3 - 4 - 5
 # !!! When mixing ovh hosted accounts with custom - done
@@ -76,21 +78,20 @@ echo "allows to hide text in editor"
 #----------- V1.0 ???????  - One day perhaps !
 ################################################################################
 }
-################################################################################
 # 1. We Declare the variables
+function f_vars { #remove
 pwd_init=`pwd` # don't edit this one !
-admin__mail="lol@here" && backup__dir="backup" && genQL__dir="genQL"
-#admin__mail=`cat $conffile|grep admin__mail|cut -f 2 -d";"` #read from conffile
-#backup__dir=`cat $conffile|grep backup__dir|cut -f 2 -d";"` #read from conffile
-#genQL__dir=`cat $conffile|grep genQL__dir|cut -f 2 -d";"` #read from conffile
+admin__mail="lol@here" # where should the logs be mailed?
+backup__dir="backup" #what is the directory to store the backup in (usefull for testing :p)
+genQL__dir="genQL" #name of the dir on the server
 rsabits=4096 #set the size of RSA key you want
 datfile=datfile.dat #which datfile should be used
 htstrength=18 #desired size of htaccess credentials.
 conffile=genQL.conf #which conf file should be used
 debug=0 # Debug mode (1 Enable - 0 Disable )
-pingtest=1
 mkdir -p var log $backup__dir && touch $datfile # 2. We create the required foldertree
 echo "$0 $1 started on `date +%Y%m%d` at `date +%R` " >> log/backup.log # Start is logged
+} # remove
 function f_debug { # Debug mode helps tracing where crashes occur (if $debug var is set on 1)
 if [ "x$debug" = "x1" ]; then
 	echo "debug = $1"  && echo "pwd = `pwd`" && 
@@ -194,11 +195,13 @@ if [ "`cat $datfile | grep $dns`" != '' ]; then
 	echo "$dns is allready in $datfile, please check and try again!"
 	return 0
 fi
+pingtest=1 # default value for pingtest
 f_ping $dns
 if [ "x$?" = "x2" ]; then
 	echo "$dns does not reply to ping, are you sure you want to add it? (y or n)"
 	read yn
 	if [ "x$yn" != "xy" ]; then
+		pingtest=0 && echo "$dns will be added without ping control"
 		return 0
 	fi
 fi
@@ -366,7 +369,7 @@ echo "require valid-user" >> var/$dns/$genQL__dir/mysql/.htaccess
 echo "</Limit>" >> var/$dns/$genQL__dir/mysql/.htaccess
 touch var/$dns/$genQL__dir/mysql/.htpasswd
 touch var/$dns/$genQL__dir/mysql/index.html
-echo "$dns;$active;$protocol;$l0gin;$ftpassword;$sshkeyname;$loginhtacces;$passhtaccess;$altdns;$port;$rpath;$timesite;$daysite;$timedb;$daydb;$coef;$GB;$priority" >> $datfile
+echo "$dns;$active;$protocol;$l0gin;$ftpassword;$sshkeyname;$loginhtacces;$passhtaccess;$altdns;$port;$rpath;$timesite;$daysite;$timedb;$daydb;$coef;$GB;$priority;$pingtest" >> $datfile
 # </FILE GENERATION>
 ########################################
 # Upload Files
@@ -454,8 +457,7 @@ fi
 }
 function f_backup { #to backup a site
 linenumber=$1
-method=$2
-dborfull=$3
+dborfull=$2
 fonction="f_backupsite"
 f_debug $fonction
 line=sed $linenumber'q;d' $datfile
@@ -470,13 +472,14 @@ passhtaccess=`echo $line|cut -f 8 -d";"`
 altdns=`echo $line|cut -f 9 -d";"`
 port=`echo $line|cut -f 10 -d";"`
 rpath=`echo $line|cut -f 11 -d";"`
-timesite=`echo $line|cut -f 12 -d";"`
-daysite=`echo $line|cut -f 13 -d";"`
-timedb=`echo $line|cut -f 14 -d";"`
-daydb=`echo $line|cut -f 15 -d";"`
+timesite=`echo $line|cut -f 12 -d";"|grep \`date +%H\``
+daysite=`echo $line|cut -f 13 -d";"|grep \`date +%a\``
+timedb=`echo $line|cut -f 14 -d";"|grep \`date +%H\``
+daydb=`echo $line|cut -f 15 -d";"|grep \`date +%a\``
 coef=`echo $line|cut -f 16 -d";"`
 GB=`echo $line|cut -f 17 -d";"`
 priority=`echo $line|cut -f 18 -d";"`
+pingtest=`echo $line|cut -f 19 -d";"`
 date=`date +%Y%m%d`
 f_ping $dns
 if [ "x$?" = "x1" ]; then
@@ -484,21 +487,23 @@ if [ "x$?" = "x1" ]; then
 	wget -q http://$dns/$genQL__dir/index.php --http-user=$loginhtacces --http-password=$passhtaccess 2>>$pwd_init/log/error.log
 	rm index.php
 	echo "Patience, $dns Is being downloaded. . ."
-if (( (( "x$2" = "xmanual")) || (( (( "x$2" = "xcron" )) && (( "x$daydb" = x"")) && ((  )) )) )); then
 	if [ "x$protocol" = "xssh" ]; then
-		rsync -qaEz -e ssh $l0gin@$altdns:$rpath/ $backup__dir/$dns/files/$dns/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
-		cp $backup__dir/$dns/files/$dns/$genQL__dir/mysql/*.sql.gz $backup__dir/$dns/mysql/ 2>>$pwd_init/log/error.log && echo "$dns's databases have been isolated."
+		rsync -qaEz -e ssh $l0gin@$altdns:$rpath/$genql__dir/mysql/ $backup__dir/$dns/files/$dns/mysql/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns's db has been downloaded"
 	elif [ "x$protocol" = "xftp" ]; then
-		lftp -c "open $dns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php /$genQL__dir/mysql $backup__dir/$dns/mysql" 2>>$pwd_init/log/error.log && echo "Database Downloaded"
-		rm index.php
-		echo Download de $dns en cours
-		lftp -c "open $dns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php / $backup__dir/$dns/files/$dns/" 2>>$pwd_init/log/error.log && echo "Site Downloaded"
+		lftp -c "open $altdns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php /$genQL__dir/mysql $backup__dir/$dns/mysql" 2>>$pwd_init/log/error.log && echo "Database Downloaded"
 	fi
-	echo "Patience, compression of $dns in progress. . ."
+	if [ "$dborfull" = "full" ]; then
+		if [ "x$protocol" = "xssh" ]; then
+			rsync -qaEz -e ssh $l0gin@$altdns:$rpath/ $backup__dir/$dns/files/$dns/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
+		elif [ "x$protocol" = "xftp" ]; then
+			lftp -c "open $dns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php / $backup__dir/$dns/files/$dns/" 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
+		fi
+	fi
+	echo "Patience, $dns is being compressed. . ."
 	cd $backup__dir/$dns/files
 	if [ `date +%d` = "01" ]; then
 		mois=`date --date="yesterday" +%b`
-		for j in `ls $dns/$genQL__dir/mysql/|grep -v \`date --date="yesterday" +%Y%m\``
+		for j in `ls $dns/$genQL__dir/mysql/|grep -v \`date --date="yesterday" +%Y%m\`` #cleanup
 		do
 			rm $dns/$genQL__dir/mysql/$j
 		done
@@ -541,9 +546,6 @@ fi
 #	fi
 rm index.php 2>/dev/null #just in case
 }
-
-
-
 function f_backupeverything {
 fonction="f_backupeverything"
 f_debug $fonction
