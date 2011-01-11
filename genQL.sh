@@ -169,8 +169,8 @@ do
 		genQL) 		f_genQL ;;
 		Backup)		m_backup ;;
 		Avtive)		f_activate ;;
-		Restore)	m_restore ;;
-		Report)		f_rapport ;;
+		Delete)		f_remove ;;
+		Restore)	f_restore ;;
 		quit)		echo "errors of this session:";cat $pwd_init/log/error.log;echo " ";echo "bye ;)";f_exit ;;
 		*)		f_nope ;;
 	esac
@@ -456,16 +456,15 @@ less -N $datfile && return 0
 function f_remove { # to remove a site from $datfile
 fonction="f_remove"
 f_debug $fonction
-echo "Choose which site you want to delete, note it's number, and then press q to quit the list"
-sleep 2
-less -N $datfile && return 0
-echo "Please give the site's number:"
-read delsite
+echo "Choose which site you want to remove from datfile."
+echo " ! The de/Activate provides a temporary alternative ! "
+f_select
+linenumber=$?
 echo "Please confirm that this is the site you want to remove from the backup by pressing y"
-sed $delsite'q;d' $datfile 
+sed $linenumber'q;d' $datfile 
 read confirm
 if [ "x$confirm" = "xy" ]; then
-	sed -i "$delsite"d $datfile && echo "site has been removed" && echo " "
+	sed -i "$linenumber"d $datfile && echo "site has been removed" && echo " "
 else
 	echo "that wasn't y!, please try again" && echo " "
 	return 1
@@ -684,6 +683,20 @@ cat -n $datfile
 read site
 return $site
 }
+function f_activate { # this function enables/disables a site.
+fonction="f_remove"
+f_debug $fonction
+echo "Choose which site you want to (De)Activate."
+f_select
+linenumber=$?
+f_variables $linenumber
+if [ "x$active" = "x1" ]; then
+	active=0 && echo "$dns is now Unactive"
+elif [ "x$active" = "x0" ]; then
+	active=1 && echo "$dns is now Active"
+fi
+echo "$dns;$active;$protocol;$l0gin;$ftpassword;$sshkeyname;$loginhtacces;$passhtaccess;$altdns;$port;$rpath;$timesite;$daysite;$timedb;$daydb;$coef;$GB;$priority;$pingtest" >> $datfile && sed -i "$linenumber"d $datfile
+}
 # End of function declaration, program entry point
 if [ "x$1" = "x" ]; then # go to main menu if there are no args
 m_main
@@ -739,6 +752,9 @@ echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function f_restore { # This function was allready buggy in genQL's older versions and hans't been ported yet... Disabled, restore by hand at the moment.
 fonction="f_restore"
 f_debug $fonction
+# echo "Which site would you like to restore?"
+# f_select
+# echo "Would you like to restore everything or only the db?"
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 echo "!! Too experimental, not yet ported to new version, temporarily disabled !!"
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
@@ -798,8 +814,5 @@ echo lol
 function f_countbackup { # check that amount of backup files = theoric number according to $datfile
 #a placer dans exi if heure=23 compter le nombre de db/sites a backupper selon les fichiers dat
 #faire une var qui fait +1 chaque fois que un site/db est backuppé en fin de journée les chiffres doivent correspondre.
-echo lol
-}
-function f_changestatus { # (de)activate a site
 echo lol
 }
