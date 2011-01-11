@@ -1,5 +1,5 @@
 #!/bin/bash
-function f_blabla {
+function f_blabla { #remove this line
 echo "allows to hide text in editor"
 #MIT Licence terms:
 #Copyright (c) 2010 Open Skill - http://www.openskill.lu
@@ -82,7 +82,7 @@ echo "allows to hide text in editor"
 function f_vars { #remove this line
 pwd_init=`pwd` # don't edit this one !
 admin__mail="lol@here" # where should the logs be mailed?
-backup__dir="backup" #what is the directory to store the backup in (usefull for testing :p)
+backup__dir="backup" #what is the directory to store the backup in (usefull for testing)
 genQL__dir="genQL" #name of the dir on the server
 rsabits=4096 #set the size of RSA key you want
 datfile=datfile.dat #which datfile should be used
@@ -160,20 +160,36 @@ function m_main { # Main Menu (displayed if genQL is called without args)
 while [ 1 ]
 do
 	PS3='Choose a number: '
-	select choix in "genQL" "listing" "add" "del" "backup" "restore" "report" "quit"
+	select choix in "genQL" "Backup" "(De)Activate" "Delete" "Restore" "Quit"
 	do
 		echo " ";echo "####################################";echo " "
 		break
 	done
 	case $choix in
 		genQL) 		f_genQL ;;
-		listing)	f_list ;;
-		add)		m_ajout ;;
-		del)		m_suppression ;;
-		backup)		m_backup ;;
-		restore)	m_restore ;;
-		report)		f_rapport ;;
+		Backup)		m_backup ;;
+		Avtive)		f_activate ;;
+		Restore)	m_restore ;;
+		Report)		f_rapport ;;
 		quit)		echo "errors of this session:";cat $pwd_init/log/error.log;echo " ";echo "bye ;)";f_exit ;;
+		*)		f_nope ;;
+	esac
+done
+}
+function m_backup { # backup menu
+while [ 1 ]
+do
+	PS3='Choose a number: '
+	select choix in "Backup a site" "Backup a db" "Backup everything" "Back"
+	do
+		echo " ";echo "####################################";echo " "
+		break
+	done
+	case $choix in
+		Site) 		echo "Which site would you like to backup?";f_backup1site 1 ;;
+		Db)		echo "Which db would you like to backup?";f_backup1site 0 ;;
+		Everything)	f_backupeverything ;;
+		Back) ;;
 		*)		f_nope ;;
 	esac
 done
@@ -430,14 +446,14 @@ echo "</html>" >> log/index.html
 echo "html log generated"
 return 0
 }
-function f_list { #lists $datfile
+function f_list { # lists $datfile
 fonction="f_list"
 f_debug $fonction
 echo "press q to quit the list, use arrows to move"
 sleep 2
 less -N $datfile && return 0
 }
-function f_remove { #to remove a site from $datfile
+function f_remove { # to remove a site from $datfile
 fonction="f_remove"
 f_debug $fonction
 echo "Choose which site you want to delete, note it's number, and then press q to quit the list"
@@ -455,31 +471,12 @@ else
 	return 1
 fi
 }
-function f_backup { # Main backup function; called with 2 args: $1=line to be backed up - $2= if set to full, backs up the whols site, else only the db.
+function f_backup { # Main backup function; called with 2 args: $1=line to be backed up - $2= if set to full, backs up the whole site, else only the db.
 linenumber=$1
 dborfull=$2
 fonction="f_backupsite"
 f_debug $fonction
-line=sed $linenumber'q;d' $datfile
-dns=`echo $line|cut -f 1 -d";"`
-active=`echo $line|cut -f 2 -d";"`
-protocol=`echo $line|cut -f 3 -d";"`
-l0gin=`echo $line|cut -f 4 -d";"`
-ftpassword=`echo $line|cut -f 5 -d";"`
-sshkeyname=`echo $line|cut -f 6 -d";"`
-loginhtacces=`echo $line|cut -f 7 -d";"`
-passhtaccess=`echo $line|cut -f 8 -d";"`
-altdns=`echo $line|cut -f 9 -d";"`
-port=`echo $line|cut -f 10 -d";"`
-rpath=`echo $line|cut -f 11 -d";"`
-timesite=`echo $line|cut -f 12 -d";"|grep \`date +%H\``
-daysite=`echo $line|cut -f 13 -d";"|grep \`date +%a\``
-timedb=`echo $line|cut -f 14 -d";"|grep \`date +%H\``
-daydb=`echo $line|cut -f 15 -d";"|grep \`date +%a\``
-coef=`echo $line|cut -f 16 -d";"`
-GB=`echo $line|cut -f 17 -d";"`
-priority=`echo $line|cut -f 18 -d";"`
-pingtest=`echo $line|cut -f 19 -d";"`
+f_variables $linenumber
 date=`date +%Y%m%d`
 if [ "x$active" = "1"  ]; then
 	f_ping $dns
@@ -565,16 +562,179 @@ function f_backup1site { # Allows to interactively select a site to backup Whole
 full=$1
 fonction="f_backup1site"
 f_debug $fonction
-echo "Choose which site you want to backup, note it's number, and then press q to quit the list"
-sleep 2
-less -N $datfile
-echo "Please give the site's number:"
-read site
+f_select
+site=$?
 if [ "x$full" != "x1" ]; then #if it's not full, then we do only the db
 	echo "starting db backup" && f_backup $site
 else
 	echo "starting full backup" && f_backup $site full # else we backup everything
 fi
+}
+function f_ping { # If $pingtest is set on 1 for the site, genQL performs a ping test before backing it up.
+fonction="f_ping"
+f_debug $fonction
+if [ "$pingtest" = "1" ]; then
+	if ping -c 1 -w 1 -q $1 </dev/null &>/dev/null; then
+		echo "$1 Answers to pings: GOOD."
+		return 1
+	else 
+		date=`date +%Y%m%d`
+		echo "$1 doesn't answer to ping on $date !!! " >> $pwd_init/log/error.log
+		return 2
+	fi
+else
+	echo "ping test disabled."
+	return 1
+fi
+}
+function f_nope { # genQL's most graphical part, thanks to moo \o/
+fonction="f_nope"
+f_debug $fonction
+#Spéciale dédicace aux gens qui ne lisent pas les menus :p
+echo " ___________________________________________________________________"
+echo "| Error:                                                       |"
+echo "| same player shoot again, wrong choice I guess !!! |"
+echo " -------------------------------------------------------------------"
+echo "        \   ^__^"
+echo "         \  (oo)\_______"
+echo "            (__)\       *\/\ "
+echo "                ||----w | "
+echo "                ||     || "
+echo "/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/"
+}
+function f_cron { # If genQL is launched with param "cron", it parses $datfile and launches the backup of db and sites according to day_db, hour_db, day_site and hour_site
+fonction="f_cron"
+f_debug $fonction
+priority=0
+while [ $priority -lt "11" ]
+do
+	echo "Priority = $priority "  #remove after tests
+	linenumber=1
+	for i in `cat $datfile`
+	do
+		prioritX=`echo "$i"|cut -f 18 -d";"`
+		if [ "$prioritX" = "$priority" ]; then
+			hour_db=`echo "$i"|cut -f 14 -d";"|grep \`date +%H\``
+			day_db=`echo "$i"|cut -f 15 -d";"|grep \`date +%a\``
+			day_site=`echo "$i"|cut -f 13 -d";"|grep \`date +%a\``
+			hour_site=`echo "$i"|cut -f 12 -d";"|grep \`date +%H\``
+			date=`date +%Y%m%d`
+			i=`echo $i|cut -f 1 -d";"`
+			if [ "$hour_db" != "" ]; then
+				f_backup $linenumber db
+			fi
+			if [ "`date +%d`" = "03" ]; then
+				f_backup $linenumber full
+			elif [ "$day_site" != "" ]; then
+					if [ "$hour_site" != "" ]; then
+						f_backup $linenumber full
+					fi
+				fi
+			fi
+		fi
+	linenumber=$(( linenumber + 1 ))
+	done
+	let priority=$priority+1
+done
+f_exit
+}
+function f_randomhour { # gets a random hour to do the backup (function supposed to get some AI)
+fonction="f_randomhour"
+f_debug $fonction
+let R=$RANDOM%24+100 &&R=`echo $R|cut -c 2-3`
+}
+function f_randomday { # gets a random day to do the backup (function supposed to get some AI)
+fonction="f_randomday"
+f_debug $fonction
+let d=$RANDOM%700/100+1 && if [ $d -eq 1 ]; then d="Mon"
+elif [ $d -eq 2 ]; then d="Tue"
+elif [ $d -eq 3 ]; then d="Wed"
+elif [ $d -eq 4 ]; then d="Thu"
+elif [ $d -eq 5 ]; then d="Fri"
+elif [ $d -eq 6 ]; then d="Sat"
+elif [ $d -eq 7 ]; then d="Sun"
+fi
+}
+function f_variables { # sets all the variables for a line in $datfile ($1 is linenumber)
+linenumber=$1
+fonction="f_variables"
+f_debug $fonction
+dns=`sed $linenumber'q;d' $datfile|cut -f 1 -d";"`
+active=`sed $linenumber'q;d' $datfile|cut -f 2 -d";"`
+protocol=`sed $linenumber'q;d' $datfile|cut -f 3 -d";"`
+l0gin=`sed $linenumber'q;d' $datfile|cut -f 4 -d";"`
+ftpassword=`sed $linenumber'q;d' $datfile|cut -f 5 -d";"`
+sshkeyname=`sed $linenumber'q;d' $datfile|cut -f 6 -d";"`
+loginhtacces=`sed $linenumber'q;d' $datfile|cut -f 7 -d";"`
+passhtaccess=`sed $linenumber'q;d' $datfile|cut -f 8 -d";"`
+altdns=`sed $linenumber'q;d' $datfile|cut -f 9 -d";"`
+port=`sed $linenumber'q;d' $datfile|cut -f 10 -d";"`
+rpath=`sed $linenumber'q;d' $datfile|cut -f 11 -d";"`
+timesite=`sed $linenumber'q;d' $datfile|cut -f 12 -d";"|grep \`date +%H\``
+daysite=`sed $linenumber'q;d' $datfile|cut -f 13 -d";"|grep \`date +%a\``
+timedb=`sed $linenumber'q;d' $datfile|cut -f 14 -d";"|grep \`date +%H\``
+daydb=`sed $linenumber'q;d' $datfile|cut -f 15 -d";"|grep \`date +%a\``
+coef=`sed $linenumber'q;d' $datfile|cut -f 16 -d";"`
+GB=`sed $linenumber'q;d' $datfile|cut -f 17 -d";"`
+priority=`sed $linenumber'q;d' $datfile|cut -f 18 -d";"`
+pingtest=`sed $linenumber'q;d' $datfile|cut -f 19 -d";"`
+}
+function f_select { # Allows to select a site from list
+cat -n $datfile
+read site
+return $site
+}
+# End of function declaration, program entry point
+if [ "x$1" = "x" ]; then # go to main menu if there are no args
+m_main
+elif [ $1 = "cron" ]; then #if started with cron
+	f_cron
+else 
+	echo "argument not known, arg can be \"cron\""
+fi
+#TODOLIST
+function f_clean { # This function was allready buggy in genQL's older versions and hans't been ported yet... Disabled, clean by hand at the moment.
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+echo "!! Too experimental, not yet ported to new version, temporarily disabled !!"
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+#fonction="f_cleansme"
+#f_debug $fonction
+#i=$1
+#i=`cat $datfile|grep $i`
+#coef=`echo $i|cut -f 5 -d";"`
+#let trans=`echo $i|cut -f 3 -d";"|sed 's/-/ /'|wc -w`*`echo $i|cut -f 4 -d";"|sed 's/-/ /'|wc -w`
+#let coeftot=$coef*$trans
+#i=`echo $i|cut -f 1 -d";"`
+#echo "clean des backup de $i"
+#ls $backup__dir/sme/$i/files|grep tar.gz|grep -v Jan|grep -v Feb|grep -v Mar|grep -v Apr|grep -v May|grep -v Jun|grep -v Jul|grep -v Aug|grep -v Sep|grep -v Oct|grep -v Nov|grep -v Dec>tempclear
+#let limit=$nb__site*$coeftot
+#echo "$i a droit à $limit backups de sites"
+#n=`cat tempclear|wc -l`
+#echo "$i a $n backups de sites"
+#n=$(( n - $limit ))
+#[[ $n < 0 ]] && n=0
+#for j in `head -n $n tempclear`
+#do
+#	rm $backup__dir/sme/$i/files/$j && echo "$backup__dir/sme/$i/files/$j à été effacé"
+#done
+#rm tempclear
+#}
+# sync with the server
+#ls $backup__dir/sme/$i/mysql/|grep sql.gz|grep -v ZFIX >tempclear
+#let limit=$nb__db*$coeftot
+#echo "$i a droit à $limit backups de db"
+#n=`cat tempclear|wc -l`
+#echo "$i a $n backups de db"
+#n=$(( n - $limit ))
+#if [ $n -lt 0 ]; then
+#	n=0
+#fi
+#for j in `head -n $n tempclear`
+#do
+#	rm $backup__dir/sme/$i/mysql/$j && echo "$backup__dir/sme/$i/mysql/$j à été effacé"
+#done
+#rm tempclear
+
 }
 function f_restore { # This function was allready buggy in genQL's older versions and hans't been ported yet... Disabled, restore by hand at the moment.
 fonction="f_restore"
@@ -631,143 +791,6 @@ echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # rm templist majeur.php notsuperdb.sql
 # echo "Et voilou, si tout va bien, la db du site $site a été remise en place comme elle était lors du backup de "$bck
 }
-function f_ping { # If $pingtest is set on 1 for the site, genQL performs a ping test before backing it up.
-fonction="f_ping"
-f_debug $fonction
-if [ "$pingtest" = "1" ]; then
-	if ping -c 1 -w 1 -q $1 </dev/null &>/dev/null; then
-		echo "$1 Answers to pings: GOOD."
-		return 1
-	else 
-		date=`date +%Y%m%d`
-		echo "$1 doesn't answer to ping on $date !!! " >> $pwd_init/log/error.log
-		return 2
-	fi
-else
-	echo "ping test disabled."
-	return 1
-fi
-}
-function f_nope { # genQL's most graphical part, thanks to moo \o/
-fonction="f_nope"
-f_debug $fonction
-#Spéciale dédicace aux gens qui ne lisent pas les menus :p
-echo " ___________________________________________________________________"
-echo "| Error:                                                       |"
-echo "| same player shoot again, wrong choice I guess !!! |"
-echo " -------------------------------------------------------------------"
-echo "        \   ^__^"
-echo "         \  (oo)\_______"
-echo "            (__)\       *\/\ "
-echo "                ||----w | "
-echo "                ||     || "
-echo "/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/"
-}
-function f_clean { # This function was allready buggy in genQL's older versions and hans't been ported yet... Disabled, clean by hand at the moment.
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo "!! Too experimental, not yet ported to new version, temporarily disabled !!"
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-#fonction="f_cleansme"
-#f_debug $fonction
-#i=$1
-#i=`cat $datfile|grep $i`
-#coef=`echo $i|cut -f 5 -d";"`
-#let trans=`echo $i|cut -f 3 -d";"|sed 's/-/ /'|wc -w`*`echo $i|cut -f 4 -d";"|sed 's/-/ /'|wc -w`
-#let coeftot=$coef*$trans
-#i=`echo $i|cut -f 1 -d";"`
-#echo "clean des backup de $i"
-#ls $backup__dir/sme/$i/files|grep tar.gz|grep -v Jan|grep -v Feb|grep -v Mar|grep -v Apr|grep -v May|grep -v Jun|grep -v Jul|grep -v Aug|grep -v Sep|grep -v Oct|grep -v Nov|grep -v Dec>tempclear
-#let limit=$nb__site*$coeftot
-#echo "$i a droit à $limit backups de sites"
-#n=`cat tempclear|wc -l`
-#echo "$i a $n backups de sites"
-#n=$(( n - $limit ))
-#[[ $n < 0 ]] && n=0
-#for j in `head -n $n tempclear`
-#do
-#	rm $backup__dir/sme/$i/files/$j && echo "$backup__dir/sme/$i/files/$j à été effacé"
-#done
-#rm tempclear
-#}
-# sync with the server
-#ls $backup__dir/sme/$i/mysql/|grep sql.gz|grep -v ZFIX >tempclear
-#let limit=$nb__db*$coeftot
-#echo "$i a droit à $limit backups de db"
-#n=`cat tempclear|wc -l`
-#echo "$i a $n backups de db"
-#n=$(( n - $limit ))
-#if [ $n -lt 0 ]; then
-#	n=0
-#fi
-#for j in `head -n $n tempclear`
-#do
-#	rm $backup__dir/sme/$i/mysql/$j && echo "$backup__dir/sme/$i/mysql/$j à été effacé"
-#done
-#rm tempclear
-}
-function f_cron { #If genQL is launched with param "cron", it parses $datfile and launches the backup of db and sites according to day_db, hour_db, day_site and hour_site
-fonction="f_cron"
-f_debug $fonction
-priority=0
-while [ $priority -lt "11" ]
-do
-	echo "Priority = $priority "  #remove after tests
-	linenumber=1
-	for i in `cat $datfile`
-	do
-		prioritX=`echo "$i"|cut -f 18 -d";"`
-		if [ "$prioritX" = "$priority" ]; then
-			hour_db=`echo "$i"|cut -f 14 -d";"|grep \`date +%H\``
-			day_db=`echo "$i"|cut -f 15 -d";"|grep \`date +%a\``
-			day_site=`echo "$i"|cut -f 13 -d";"|grep \`date +%a\``
-			hour_site=`echo "$i"|cut -f 12 -d";"|grep \`date +%H\``
-			date=`date +%Y%m%d`
-			i=`echo $i|cut -f 1 -d";"`
-			if [ "$hour_db" != "" ]; then
-				f_backup $linenumber db
-			fi
-			if [ "`date +%d`" = "03" ]; then
-				f_backup $linenumber full
-			elif [ "$day_site" != "" ]; then
-					if [ "$hour_site" != "" ]; then
-						f_backup $linenumber full
-					fi
-				fi
-			fi
-		fi
-	linenumber=$(( linenumber + 1 ))
-	done
-	let priority=$priority+1
-done
-f_exit
-}
-function f_randomhour { #gets a random hour to do the backup (function supposed to get some AI)
-fonction="f_randomhour"
-f_debug $fonction
-let R=$RANDOM%24+100 &&R=`echo $R|cut -c 2-3`
-}
-function f_randomday { #gets a random day to do the backup (function supposed to get some AI)
-fonction="f_randomday"
-f_debug $fonction
-let d=$RANDOM%700/100+1 && if [ $d -eq 1 ]; then d="Mon"
-elif [ $d -eq 2 ]; then d="Tue"
-elif [ $d -eq 3 ]; then d="Wed"
-elif [ $d -eq 4 ]; then d="Thu"
-elif [ $d -eq 5 ]; then d="Fri"
-elif [ $d -eq 6 ]; then d="Sat"
-elif [ $d -eq 7 ]; then d="Sun"
-fi
-}
-# End of function declaration, program entry point
-if [ "x$1" = "x" ]; then # go to main menu if there are no args
-m_main
-elif [ $1 = "cron" ]; then #if started with cron
-	c_hourly
-	f_exit
-else 
-	echo "argument not known, arg can be \"cron\""
-fi
-#TODOLIST
 function f_checkbackup { # supposed to add some checksums
 #si heure=23; check récursivement dans tous les dossiers sql pour voir si un backup db a été effectué!)
 echo lol
@@ -775,5 +798,8 @@ echo lol
 function f_countbackup { # check that amount of backup files = theoric number according to $datfile
 #a placer dans exi if heure=23 compter le nombre de db/sites a backupper selon les fichiers dat
 #faire une var qui fait +1 chaque fois que un site/db est backuppé en fin de journée les chiffres doivent correspondre.
+echo lol
+}
+function f_changestatus { # (de)activate a site
 echo lol
 }
