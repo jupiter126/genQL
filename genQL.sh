@@ -79,7 +79,7 @@ echo "allows to hide text in editor"
 ################################################################################
 }
 # 1. We Declare the variables
-function f_vars { #remove
+function f_vars { #remove this line
 pwd_init=`pwd` # don't edit this one !
 admin__mail="lol@here" # where should the logs be mailed?
 backup__dir="backup" #what is the directory to store the backup in (usefull for testing :p)
@@ -92,16 +92,16 @@ debug=0 # Debug mode (1 Enable - 0 Disable )
 mkdir -p var log $backup__dir && touch $datfile # 2. We create the required foldertree
 echo "$0 $1 started on `date +%Y%m%d` at `date +%R` " >> log/backup.log # Start is logged
 } # remove
-function f_debug { # Debug mode helps tracing where crashes occur (if $debug var is set on 1)
+function f_debug { # Debug mode helps tracing where crashes occur (if $debug = 1)
 if [ "x$debug" = "x1" ]; then
 	echo "debug = $1"  && echo "pwd = `pwd`" && 
 	echo "debug = $1" >> log/debug.log && echo "pwd = `pwd`" >> log/debug.log
 fi
 }
-function f_maillog { # Mails the logs to $admin__mail
+function f_maillog { # Mails the logs to $admin__mail (if mailx is configured properly on the system)
 fonction="f_maillog"
 f_debug $fonction
-if [ `date +%H` = 23 ]; then # Time of mail sending is 23
+if [ `date +%H` = 23 ]; then # Time of mail sending is 23 - if you want the log to be sent each time genQL exits, change to if [ "23" = "23" ]; then
 	rm log/index.html
 	echo "Maillog started on `date +%d%m%Y` at `date +%R`" >> log/genQL.log 
 	echo " " >> log/genQL.log && echo "Maillog started on `date +%d%m%Y` at `date +%R`"
@@ -156,7 +156,7 @@ if [ -f ${pidfile} ]; then
 fi
 pid=`ps -ef | grep ${scriptname} | head -n1 |  awk ' {print $2;} '`
 echo ${pid} > ${pidfile}
-function m_main { # Main Menu
+function m_main { # Main Menu (displayed if genQL is called without args)
 while [ 1 ]
 do
 	PS3='Choose a number: '
@@ -178,7 +178,7 @@ do
 	esac
 done
 }
-function f_genQL { # Add sites to $datfile and generate required keys, files, ......
+function f_genQL { # Interactive function to add sites to $datfile and generate required keys, files, ...
 # This function generates the filetree to be uploaded on the server, the key auth mechanism and the ".htaccess" and ".htpasswd" files.
 # !!! You should check those files before uploading them on the server !!!
 fonction="f_genQL"
@@ -379,7 +379,7 @@ echo "$dns;$active;$protocol;$l0gin;$ftpassword;$sshkeyname;$loginhtacces;$passh
 #if [ x$protocol = "xftp" ]; then
 #		echo "patience, uploading!"
 #		lftp -c "open ftp.$b && user $c $d && cd www && mirror --reverse --delete var/$dns/$genQL__dir var/$dns/$genQL__dir" 2>>$pwd_init/log/error.log && echo "genQL is in place on $b"
-#	elif [ "$xservice" = "xssh" ]; then
+#	elif [ "x$service" = "xssh" ]; then
 #		echo "patience, uploading!"
 #		rsync -qaEzc -e ssh var/$dns/$genQL__dir root@$sme__domain:$sme__basedir/$site/html/ 2>>$pwd_init/log/error.log && echo "$genQL__dir is in place on $site"
 #		ssh $sme__domain -l root "chown -R www:clients /home/e-smith/files/ibays/$site/html/" && echo "chown done"
@@ -400,11 +400,11 @@ echo "########################################"
 # REVOKE ALL PRIVILEGES ON `dbname` . * FROM 'dbuser'@'localhost';
 # GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON `dbname` . * TO 'dbuser'@'localhost';
 }
-function f_enablesiteauth { # called with $dns as arg ! - sets the key in place for present server backup (we use different keys for all servers)
+function f_enablesiteauth { # called with $linenumber as arg ! - sets the key in place for present server to backup.
 keey=$0
 fonction="f_enablesiteauth"
 f_debug $fonction
-cp var/keys/key.`sed $keey'q;d' datfile.dat|cut -f 6 -d";"` /home/`whoami`/.ssh/id_rsa && echo "key of `sed $keey'q;d' datfile.dat|cut -f 1 -d";"` has been activated" && echo "key of `sed $keey'q;d' datfile.dat|cut -f 1 -d";"` has been activated" >> log/backup.log
+cp var/keys/key.`sed $keey'q;d' $datfile|cut -f 6 -d";"` /home/`whoami`/.ssh/id_rsa && echo "key of `sed $keey'q;d' $datfile|cut -f 1 -d";"` has been activated" && echo "key of `sed $keey'q;d' $datfile|cut -f 1 -d";"` has been activated" >> log/backup.log 2>>$pwd_init/log/error.log
 }
 function f_makehtmlist { # This function puts the logs in xhtml format (you can customize the css)
 echo "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">" > log/index.html
@@ -455,7 +455,7 @@ else
 	return 1
 fi
 }
-function f_backup { #to backup a site
+function f_backup { # Main backup function; called with 2 args: $1=line to be backed up - $2= if set to full, backs up the whols site, else only the db.
 linenumber=$1
 dborfull=$2
 fonction="f_backupsite"
@@ -481,70 +481,75 @@ GB=`echo $line|cut -f 17 -d";"`
 priority=`echo $line|cut -f 18 -d";"`
 pingtest=`echo $line|cut -f 19 -d";"`
 date=`date +%Y%m%d`
-f_ping $dns
-if [ "x$?" = "x1" ]; then
-	mkdir -p $backup__dir/$dns/files $backup__dir/$dns/mysql
-	wget -q http://$dns/$genQL__dir/index.php --http-user=$loginhtacces --http-password=$passhtaccess 2>>$pwd_init/log/error.log
-	rm index.php
-	echo "Patience, $dns Is being downloaded. . ."
-	if [ "x$protocol" = "xssh" ]; then
-		rsync -qaEz -e ssh $l0gin@$altdns:$rpath/$genql__dir/mysql/ $backup__dir/$dns/files/$dns/mysql/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns's db has been downloaded"
-	elif [ "x$protocol" = "xftp" ]; then
-		lftp -c "open $altdns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php /$genQL__dir/mysql $backup__dir/$dns/mysql" 2>>$pwd_init/log/error.log && echo "Database Downloaded"
-	fi
-	if [ "$dborfull" = "full" ]; then
+if [ "x$active" = "1"  ]; then
+	f_ping $dns
+	if [ "x$?" = "x1" ]; then
+		mkdir -p $backup__dir/$dns/files $backup__dir/$dns/mysql
+		wget -q http://$dns/$genQL__dir/index.php --http-user=$loginhtacces --http-password=$passhtaccess 2>>$pwd_init/log/error.log
+		rm index.php
+		echo "Patience, $dns Is being downloaded. . ."
 		if [ "x$protocol" = "xssh" ]; then
-			rsync -qaEz -e ssh $l0gin@$altdns:$rpath/ $backup__dir/$dns/files/$dns/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
+			f_enablesiteauth $linenumber
+			rsync -qaEz -e ssh $l0gin@$altdns:$rpath/$genql__dir/mysql/ $backup__dir/$dns/files/$dns/mysql/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns's db has been downloaded"
 		elif [ "x$protocol" = "xftp" ]; then
-			lftp -c "open $dns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php / $backup__dir/$dns/files/$dns/" 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
+			lftp -c "open $altdns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php /$genQL__dir/mysql $backup__dir/$dns/mysql" 2>>$pwd_init/log/error.log && echo "Database Downloaded"
+		fi
+		if [ "$dborfull" = "full" ]; then
+			if [ "x$protocol" = "xssh" ]; then
+				rsync -qaEz -e ssh $l0gin@$altdns:$rpath/ $backup__dir/$dns/files/$dns/ > /dev/null 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
+			elif [ "x$protocol" = "xftp" ]; then
+				lftp -c "open $dns && user $l0gin $ftpassword && mirror -x .htpasswd -x www/$genQL__dir/index.php -x www/$genQL__dir/majeur.php / $backup__dir/$dns/files/$dns/" 2>>$pwd_init/log/error.log && echo "$dns has been downloaded"
+			fi
+		fi
+		echo "Patience, $dns is being compressed. . ."
+		cd $backup__dir/$dns/files
+		if [ `date +%d` = "01" ]; then
+			mois=`date --date="yesterday" +%b`
+			for j in `ls $dns/$genQL__dir/mysql/|grep -v \`date --date="yesterday" +%Y%m\`` #cleanup
+			do
+				rm $dns/$genQL__dir/mysql/$j
+			done
+			tar -cpzf $dns-$mois.`date +%Y`.tar.gz $dns 2>>$pwd_init/log/error.log 
+			if [ -f $dns-$mois.`date +%Y`.tar.gz ]; then
+				echo "$dns was saved in $backup__dir/$dns/files/$dns-$mois.`date +%Y`.tar.gz" && echo "$dns was saved in $backup__dir/$dns/files/$dns-$mois.`date +%Y`.tar.gz" >> $pwd_init/log/backup.log
+				cd $pwd_init
+				# FUNCTION f_clean $dns
+				echo "$date" > var/$dns
+			fi
+		else
+			for j in `ls $dns/$genQL__dir/mysql/|grep -v \`date +%Y%m\``
+			do
+				rm $dns/$genQL__dir/mysql/$j
+			done
+			tar -cpzf $dns-$date.tar.gz $dns 2>>$pwd_init/log/error.log
+			if [ -f $dns-$date.tar.gz ]; then
+				echo "$dns was saved in $backup__dir/$dns/files/$dns-$date.tar.gz" && echo "$dns was saved in $backup__dir/$dns/files/$dns-$date.tar.gz" >> $pwd_init/log/backup.log
+				cd $pwd_init
+				# FUNCTION f_clean $dns
+				echo "$date" > var/$dns
+			fi
 		fi
 	fi
-	echo "Patience, $dns is being compressed. . ."
-	cd $backup__dir/$dns/files
-	if [ `date +%d` = "01" ]; then
-		mois=`date --date="yesterday" +%b`
-		for j in `ls $dns/$genQL__dir/mysql/|grep -v \`date --date="yesterday" +%Y%m\`` #cleanup
-		do
-			rm $dns/$genQL__dir/mysql/$j
-		done
-		tar -cpzf $dns-$mois.`date +%Y`.tar.gz $dns 2>>$pwd_init/log/error.log 
-		if [ -f $dns-$mois.`date +%Y`.tar.gz ]; then
-			echo "$dns was saved in $backup__dir/$dns/files/$dns-$mois.`date +%Y`.tar.gz" && echo "$dns was saved in $backup__dir/$dns/files/$dns-$mois.`date +%Y`.tar.gz" >> $pwd_init/log/backup.log
-			cd $pwd_init
-			# FUNCTION f_clean $dns
-			echo "$date" > var/$dns
-		fi
-	else
-		for j in `ls $dns/$genQL__dir/mysql/|grep -v \`date +%Y%m\``
-		do
-			rm $dns/$genQL__dir/mysql/$j
-		done
-		tar -cpzf $dns-$date.tar.gz $dns 2>>$pwd_init/log/error.log
-		if [ -f $dns-$date.tar.gz ]; then
-			echo "$dns was saved in $backup__dir/$dns/files/$dns-$date.tar.gz" && echo "$dns was saved in $backup__dir/$dns/files/$dns-$date.tar.gz" >> $pwd_init/log/backup.log
-			cd $pwd_init
-			# FUNCTION f_clean $dns
-			echo "$date" > var/$dns
-		fi
-	fi
+	############################
+	# Check if backup was done (replace $i with $dns ...... )
+	#	checkifdone=`ls $backup__dir/sme/$i/files/ | grep "\`date +%Y%m%d\`"|tail -n 1`
+	#	checkifdonesize=`ls -l $backup__dir/sme/$i/files/| grep "\`date +%Y%m%d\`"|tail -n 1|cut -f 6 -d" "`
+	#	echo $checkifdone
+	#	if [ `echo $checkifdone|wc -m` -lt "5" ]; then
+	#		echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!! " && echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!!" >> log/error.sme.log
+	#	else
+	#		echo "$checkifdone has been correctly backed up and is $checkifdonesize in size"
+	#		echo "size is $checkifdonesize on `date +%Y%m%d` at `date +%R`" >> $backup__dir/sme/$i/checkifdone
+	#		checkifdonestate=`cat $backup__dir/sme/$i/checkifdone|grep $checkifdonesize|wc -l`
+	#		let nochangetime=$checkifdonestate/`cat sme.dat|grep $i|cut -f 2 -d";"|sed 's/-/ /'|wc -w`
+	#		if [ "$nochangetime" -gt "1" ]; then
+	#			echo "!!! Warning, size of sme $i hasn't changed in $nochangetime days" >> log/warning.sme.log
+	#		fi
+	#	fi
+	rm index.php 2>/dev/null #just in case
+else
+	echo "$dns is inactive"
 fi
-############################
-# Check if backup was done (replace $i with $dns ...... )
-#	checkifdone=`ls $backup__dir/sme/$i/files/ | grep "\`date +%Y%m%d\`"|tail -n 1`
-#	checkifdonesize=`ls -l $backup__dir/sme/$i/files/| grep "\`date +%Y%m%d\`"|tail -n 1|cut -f 6 -d" "`
-#	echo $checkifdone
-#	if [ `echo $checkifdone|wc -m` -lt "5" ]; then
-#		echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!! " && echo "ERROR !!! Can't find today's backup of $i which is supposed to just have been done !!!" >> log/error.sme.log
-#	else
-#		echo "$checkifdone has been correctly backed up and is $checkifdonesize in size"
-#		echo "size is $checkifdonesize on `date +%Y%m%d` at `date +%R`" >> $backup__dir/sme/$i/checkifdone
-#		checkifdonestate=`cat $backup__dir/sme/$i/checkifdone|grep $checkifdonesize|wc -l`
-#		let nochangetime=$checkifdonestate/`cat sme.dat|grep $i|cut -f 2 -d";"|sed 's/-/ /'|wc -w`
-#		if [ "$nochangetime" -gt "1" ]; then
-#			echo "!!! Warning, size of sme $i hasn't changed in $nochangetime days" >> log/warning.sme.log
-#		fi
-#	fi
-rm index.php 2>/dev/null #just in case
 }
 function f_backupeverything { # backs up everything
 fonction="f_backupeverything"
@@ -556,7 +561,7 @@ do
 	j=$(( j + 1 ))
 done
 }
-function f_backup1site { # Whole site if called with $1=1, else only db 
+function f_backup1site { # Allows to interactively select a site to backup Whole site if called with $1=1, else only 1 db
 full=$1
 fonction="f_backup1site"
 f_debug $fonction
@@ -566,143 +571,67 @@ less -N $datfile
 echo "Please give the site's number:"
 read site
 if [ "x$full" != "x1" ]; then #if it's not full, then we do only the db
-	f_backup $site
+	echo "starting db backup" && f_backup $site
 else
-	f_backup $site full # else we backup everything
+	echo "starting full backup" && f_backup $site full # else we backup everything
 fi
 }
-function f_restore1sme {
-fonction="f_restore1sme"
+function f_restore { # This function was allready buggy in genQL's older versions and hans't been ported yet... Disabled, restore by hand at the moment.
+fonction="f_restore"
 f_debug $fonction
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!! FONCTION EXPERIMENTALE, lire le code avant de faire  !!!!!!!!!!!!!"
-echo "!!!!!!!! Grosso merdo, on choisit un des backups du site dans !!!!!!!!!!!!!"
-echo "!!!!!!!! une liste, le script la décompresse, la remets en    !!!!!!!!!!!!!"
-echo "!!!!!!!! place, puis appelle majeur.php pour remettre la db.  !!!!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!!!  Si ca merde, ca nique le site :s  !!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!!    Surtout que le majeur.php il existe pas encore    !!!!!!!!!!!!!"
-echo "!!!!!! Pour l'instant, répondez donc non à la question qui suit !!!!!!!!!!!"
-echo "!!!  Ne venez pas me dire apres qu'on ne vous a pas prévenu avant   !!!!!!!"
+echo "!! Too experimental, not yet ported to new version, temporarily disabled !!"
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo " "
-cat -n sme.dat|cut -f 1 -d";"
-echo " "
-f_ping openskill.com
-if [ "$?" = "1" ]; then
-	echo "Quel site souhaitez vous restaurer?"
-	read site
-	site=`sed -n "$site"p sme.dat|cut -f 1 -d";"`
-	ls -t sme/$site/files/*.tar.gz | sed s:sme/$site/files/:: > templist
-	cat -n templist
-	echo "Quel backup souhaitez vous restaurer?"
-	read bck
-	bck=`sed -n "$bck"p templist`
-	rm -Rf sme/$site/files/$site/
-	echo "Patience, on décompresse :D-"
-	tar -xpzf sme/$site/files/$bck 2>>$pwd_init/log/error.log  && echo "archive décompressée"
-	db=`ls sme/$site/files/$site/genQL/mysql/|grep .gz |tail -n1`
-	gunzip -dc sme/$site/files/$site/genQL/mysql/$db > sme/$site/files/$site/genQL/mysql/notsuperdb.sql 2>>$pwd_init/log/error.log && echo "db décompressée"
-	db=`echo $db|sed s:.gz::`
-	#chown -R www:\root sme/$site/files/$site/
-	echo "Patience, on upload ^^"
-	rsync -qaEzc -e ssh sme/$site/files/$site/ root@$sme__domain:/home/e-smith/files/ibays/$site/html/ 2>>$pwd_init/log/error.log && echo "synchronisation effectuée"
-	ssh $sme__domain -l root "chown -R www:clients /home/e-smith/files/ibays/$site/html/"
-	echo "On réinstaure la base de données"
-	wget -q "http://www.$sme__domain/$site/genQL/majeur.php" "--http-user=$htaccess__user" "--http-password=$htaccess__pwd_clr"
-	rm templist
-	rm majeur.php
-	echo "Et voilou, si tout va bien, le site $site a été remis en place comme il était lors du backup de "$db
-fi
+#cat -n $datfile|cut -f 1 -d";"
+#echo " "
+#f_ping $dns
+#if [ "$?" = "1" ]; then
+#	echo "Quel site souhaitez vous restaurer?"
+#	read site
+#	site=`sed -n "$site"p sme.dat|cut -f 1 -d";"`
+#	ls -t sme/$site/files/*.tar.gz | sed s:sme/$site/files/:: > templist
+#	cat -n templist
+#	echo "Quel backup souhaitez vous restaurer?"
+#	read bck
+#	bck=`sed -n "$bck"p templist`
+#	rm -Rf sme/$site/files/$site/
+#	echo "Patience, on décompresse :D-"
+#	tar -xpzf sme/$site/files/$bck 2>>$pwd_init/log/error.log  && echo "archive décompressée"
+#	db=`ls sme/$site/files/$site/genQL/mysql/|grep .gz |tail -n1`
+#	gunzip -dc sme/$site/files/$site/genQL/mysql/$db > sme/$site/files/$site/genQL/mysql/notsuperdb.sql 2>>$pwd_init/log/error.log && echo "db décompressée"
+#	db=`echo $db|sed s:.gz::`
+#	#chown -R www:\root sme/$site/files/$site/
+#	echo "Patience, on upload ^^"
+#	rsync -qaEzc -e ssh sme/$site/files/$site/ root@$sme__domain:/home/e-smith/files/ibays/$site/html/ 2>>$pwd_init/log/error.log && echo "synchronisation effectuée"
+#	ssh $sme__domain -l root "chown -R www:clients /home/e-smith/files/ibays/$site/html/"
+#	echo "On réinstaure la base de données"
+#	wget -q "http://www.$sme__domain/$site/genQL/majeur.php" "--http-user=$htaccess__user" "--http-password=$htaccess__pwd_clr"
+#	rm templist
+#	rm majeur.php
+#	echo "Et voilou, si tout va bien, le site $site a été remis en place comme il était lors du backup de "$db
+# fi
+# cat -n sme.dat|cut -f 1 -d";"
+# echo " "
+# echo "Quel site souhaitez vous restaurer?"
+# read site
+# site=`sed -n "$site"p sme.dat`
+# ls -t sme/$site/mysql/*.sql.gz | sed s:sme/$site/mysql/:: > templist
+# cat -n templist
+# echo "Quelle db souhaitez vous restaurer?"
+# read bck
+# bck=`sed -n "$bck"p templist`
+# echo "Patience, on décompresse :D-"
+# gzip -dc sme/$site/mysql/$bck > notsuperdb.sql 2>>$pwd_init/log/error.log && echo "db décompressée"
+## chown www notsuperdb.sql
+# echo "Patience, on upload ^^"
+# rsync -qaEzc -e ssh notsuperdb.sql root@$sme__domain:/home/e-smith/files/ibays/$site/html/genQL/mysql/ 2>>$pwd_init/log/error.log && echo "db uploadée"
+# ssh $sme__domain -l root "chown -R www:clients /home/e-smith/files/ibays/$site/html/"
+# echo "On réinstaure la base de données"
+# wget -q "http://www.$sme__domain/$site/genQL/majeur.php" "--http-user=$htaccess__user" "--http-password=$htaccess__pwd_clr"
+# rm templist majeur.php notsuperdb.sql
+# echo "Et voilou, si tout va bien, la db du site $site a été remise en place comme elle était lors du backup de "$bck
 }
-function f_restore1ftpovh {
-fonction="f_restore1ftpovh"
-f_debug $fonction
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!! FONCTION EXPERIMENTALE, lire le code avant de faire  !!!!!!!!!!!!!"
-echo "!!!!!!!! Grosso merdo, on choisit un des backups du site dans !!!!!!!!!!!!!"
-echo "!!!!!!!! une liste, le script la décompresse, la remets en    !!!!!!!!!!!!!"
-echo "!!!!!!!! place, puis appelle majeur.php pour remettre la db.  !!!!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!!!  Si ca merde, ca nique le site :s  !!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!!    Surtout que le majeur.php il existe pas encore    !!!!!!!!!!!!!"
-echo "!!!!!! Pour l'instant, répondez donc non à la question qui suit !!!!!!!!!!!"
-echo "!!!  Ne venez pas me dire apres qu'on ne vous a pas prévenu avant   !!!!!!!"
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-cat -n ftpovh.dat|cut -f 1 -d";"
-echo " "
-echo "Quel site souhaitez vous restaurer ?"
-read site
-i=`sed -n "$site"p ftpovh.dat`
-a=`echo $i|cut -f 1 -d";"`
-b=`echo $i|cut -f 2 -d";"`
-c=`echo $i|cut -f 3 -d";"`
-d=`echo $i|cut -f 4 -d";"`
-date=`date +%Y%m%d`
-f_ping $b
-if [ "$?" = "1" ]; then
-	mkdir -p ftpovh/ $a
-	wget -q http://www.$b/genQL/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr
-	echo Download de la db de $a en cours
-	wget -q -m ftp://ftp.$b/www/genQL/mysql/ --ftp-user=$c --ftp-password=$d --directory-prefix=ftpovh/$a/mysql/$a-$date/ 2>>$pwd_init/log/error.log && echo db rapatriée
-	mv ftpovh/$a/mysql/$a-$date/ftp.$b/www/genQL/mysql/*$date*.sql.gz ftpovh/$a/mysql/$a-$date/ 2>>$pwd_init/log/error.log
-	rm -Rf ftpovh/$a/mysql/$a-$date/ftp.$b
-	rm index.php
-	echo Download de $a en cours
-	wget -q -m ftp://ftp.$b/ --ftp-user=$c --ftp-password=$d --directory-prefix=ftpovh/$a/files/$a-current/ 2>>$pwd_init/log/error.log && echo site rapatrié
-	echo Compression de $a en cours
-	tar -cpzf ftpovh/ $a /files/ $a - $date .tar.gz ftpovh/ $a /files/ $a -current/ftp. $b  2>>$pwd_init/log/error.log && echo $a backup fait le $date
-fi
-}
-function f_restore1dbftpovh {
-fonction="f_restore1dbftpovh"
-f_debug $fonction
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!! FONCTION EXPERIMENTALE, lire le code avant de faire  !!!!!!!!!!!!!"
-echo "!!!!!!!! Grosso merdo, on choisit un des backups du site dans !!!!!!!!!!!!!"
-echo "!!!!!!!! une liste, le script la décompresse, la remets en    !!!!!!!!!!!!!"
-echo "!!!!!!!! place, puis appelle majeur.php pour remettre la db.  !!!!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!!!  Si ca merde, ca nique le site :s  !!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!!    Surtout que le majeur.php il existe pas encore    !!!!!!!!!!!!!"
-echo "!!!!!! Pour l'instant, répondez donc non à la question qui suit !!!!!!!!!!!"
-echo "!!!  Ne venez pas me dire apres qu'on ne vous a pas prévenu avant   !!!!!!!"
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo lol
-}
-function f_restore1dbsme {
-fonction="f_restore1dbsme"
-f_debug $fonction
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!! FONCTION EXPERIMENTALE, lire le code avant de faire  !!!!!!!!!!!!!"
-echo "!!!!!!!! Grosso merdo, on choisit un des backups du site dans !!!!!!!!!!!!!"
-echo "!!!!!!!! une liste, le script la décompresse, la remets en    !!!!!!!!!!!!!"
-echo "!!!!!!!! place, puis appelle majeur.php pour remettre la db.  !!!!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!!!  Si ca merde, ca nique le site :s  !!!!!!!!!!!!!!!!!!!!!!"
-echo "!!!!!!!!    Surtout que le majeur.php il existe pas encore    !!!!!!!!!!!!!"
-echo "!!!!!! Pour l'instant, répondez donc non à la question qui suit !!!!!!!!!!!"
-echo "!!!  Ne venez pas me dire apres qu'on ne vous a pas prévenu avant   !!!!!!!"
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-echo " "
-cat -n sme.dat|cut -f 1 -d";"
-echo " "
-echo "Quel site souhaitez vous restaurer?"
-read site
-site=`sed -n "$site"p sme.dat`
-ls -t sme/$site/mysql/*.sql.gz | sed s:sme/$site/mysql/:: > templist
-cat -n templist
-echo "Quelle db souhaitez vous restaurer?"
-read bck
-bck=`sed -n "$bck"p templist`
-echo "Patience, on décompresse :D-"
-gzip -dc sme/$site/mysql/$bck > notsuperdb.sql 2>>$pwd_init/log/error.log && echo "db décompressée"
-#chown www notsuperdb.sql
-echo "Patience, on upload ^^"
-rsync -qaEzc -e ssh notsuperdb.sql root@$sme__domain:/home/e-smith/files/ibays/$site/html/genQL/mysql/ 2>>$pwd_init/log/error.log && echo "db uploadée"
-ssh $sme__domain -l root "chown -R www:clients /home/e-smith/files/ibays/$site/html/"
-echo "On réinstaure la base de données"
-wget -q "http://www.$sme__domain/$site/genQL/majeur.php" "--http-user=$htaccess__user" "--http-password=$htaccess__pwd_clr"
-rm templist majeur.php notsuperdb.sql
-echo "Et voilou, si tout va bien, la db du site $site a été remise en place comme elle était lors du backup de "$bck
-}
-function f_ping {
+function f_ping { # If $pingtest is set on 1 for the site, genQL performs a ping test before backing it up.
 fonction="f_ping"
 f_debug $fonction
 if [ "$pingtest" = "1" ]; then
@@ -719,14 +648,13 @@ else
 	return 1
 fi
 }
-function f_nope {
+function f_nope { # genQL's most graphical part, thanks to moo \o/
 fonction="f_nope"
 f_debug $fonction
 #Spéciale dédicace aux gens qui ne lisent pas les menus :p
-
 echo " ___________________________________________________________________"
-echo "| Erreur DTC:                                                       |"
-echo "| same player shoot again, vous n'avez pas du faire le bon choix!!! |"
+echo "| Error:                                                       |"
+echo "| same player shoot again, wrong choice I guess !!! |"
 echo " -------------------------------------------------------------------"
 echo "        \   ^__^"
 echo "         \  (oo)\_______"
@@ -735,130 +663,56 @@ echo "                ||----w | "
 echo "                ||     || "
 echo "/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/"
 }
-function f_rapport {
-fonction="f_rapport"
-f_debug $fonction
-du -h --max-depth=1 ftpovh sme
+function f_clean { # This function was allready buggy in genQL's older versions and hans't been ported yet... Disabled, clean by hand at the moment.
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+echo "!! Too experimental, not yet ported to new version, temporarily disabled !!"
+echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+#fonction="f_cleansme"
+#f_debug $fonction
+#i=$1
+#i=`cat $datfile|grep $i`
+#coef=`echo $i|cut -f 5 -d";"`
+#let trans=`echo $i|cut -f 3 -d";"|sed 's/-/ /'|wc -w`*`echo $i|cut -f 4 -d";"|sed 's/-/ /'|wc -w`
+#let coeftot=$coef*$trans
+#i=`echo $i|cut -f 1 -d";"`
+#echo "clean des backup de $i"
+#ls $backup__dir/sme/$i/files|grep tar.gz|grep -v Jan|grep -v Feb|grep -v Mar|grep -v Apr|grep -v May|grep -v Jun|grep -v Jul|grep -v Aug|grep -v Sep|grep -v Oct|grep -v Nov|grep -v Dec>tempclear
+#let limit=$nb__site*$coeftot
+#echo "$i a droit à $limit backups de sites"
+#n=`cat tempclear|wc -l`
+#echo "$i a $n backups de sites"
+#n=$(( n - $limit ))
+#[[ $n < 0 ]] && n=0
+#for j in `head -n $n tempclear`
+#do
+#	rm $backup__dir/sme/$i/files/$j && echo "$backup__dir/sme/$i/files/$j à été effacé"
+#done
+#rm tempclear
+#}
+# sync with the server
+#ls $backup__dir/sme/$i/mysql/|grep sql.gz|grep -v ZFIX >tempclear
+#let limit=$nb__db*$coeftot
+#echo "$i a droit à $limit backups de db"
+#n=`cat tempclear|wc -l`
+#echo "$i a $n backups de db"
+#n=$(( n - $limit ))
+#if [ $n -lt 0 ]; then
+#	n=0
+#fi
+#for j in `head -n $n tempclear`
+#do
+#	rm $backup__dir/sme/$i/mysql/$j && echo "$backup__dir/sme/$i/mysql/$j à été effacé"
+#done
+#rm tempclear
 }
-function f_cleansme {
-fonction="f_cleansme"
-f_debug $fonction
-i=$1
-i=`cat sme.dat|grep $i`
-coef=`echo $i|cut -f 5 -d";"`
-let trans=`echo $i|cut -f 3 -d";"|sed 's/-/ /'|wc -w`*`echo $i|cut -f 4 -d";"|sed 's/-/ /'|wc -w`
-let coeftot=$coef*$trans
-i=`echo $i|cut -f 1 -d";"`
-echo "clean des backup de $i"
-ls $backup__dir/sme/$i/files|grep tar.gz|grep -v Jan|grep -v Feb|grep -v Mar|grep -v Apr|grep -v May|grep -v Jun|grep -v Jul|grep -v Aug|grep -v Sep|grep -v Oct|grep -v Nov|grep -v Dec>tempclear
-let limit=$nb__site*$coeftot
-echo "$i a droit à $limit backups de sites"
-n=`cat tempclear|wc -l`
-echo "$i a $n backups de sites"
-n=$(( n - $limit ))
-[[ $n < 0 ]] && n=0
-for j in `head -n $n tempclear`
-do
-	rm $backup__dir/sme/$i/files/$j && echo "$backup__dir/sme/$i/files/$j à été effacé"
-done
-rm tempclear
-}
-function f_cleanftpovh {
-fonction="f_cleanftpovh"
-f_debug $fonction
-i=$1
-i=`cat ftpovh.dat|grep $i`
-coef=`echo $i|cut -f 8 -d";"`
-let trans=`echo $i|cut -f 6 -d";"|sed 's/-/ /'|wc -w`*`echo $i|cut -f 7 -d";"|sed 's/-/ /'|wc -w`
-let coeftot=$coef*$trans
-i=`echo $i|cut -f 1 -d";"`
-echo "clean des backup de $i"
-ls $backup__dir/ftpovh/$i/files|grep tar.gz|grep -v Jan|grep -v Feb|grep -v Mar|grep -v Apr|grep -v May|grep -v Jun|grep -v Jul|grep -v Aug|grep -v Sep|grep -v Oct|grep -v Nov|grep -v Dec>tempclear
-let limit=$nb__site*$coeftot
-echo "$i a droit à $limit backups de sites"
-n=`cat tempclear|wc -l`
-echo "$i a $n backups de sites"
-n=$(( n - $limit ))
-[[ $n < 0 ]] && n=0
-head -n $n tempclear
-for j in `head -n $n tempclear`
-do
-	rm $backup__dir/ftpovh/$i/files/$j && echo "$backup__dir/ftpovh/$i/files/$j à été effacé"
-done
-rm tempclear
-}
-function f_cleandbsme {
-fonction="f_cleandbsme"
-f_debug $fonction
-i=$1
-i=`cat sme.dat|grep $i`
-coef=`echo $i|cut -f 5 -d";"`
-trans=`echo $i|cut -f 2 -d";"|sed 's/-/ /'|wc -w`
-let coeftot=$coef*$trans
-i=`echo $i|cut -f 1 -d";"`
-echo "clean des backup de $i"
-ls $backup__dir/sme/$i/mysql/|grep sql.gz|grep -v ZFIX >tempclear
-let limit=$nb__db*$coeftot
-echo "$i a droit à $limit backups de db"
-n=`cat tempclear|wc -l`
-echo "$i a $n backups de db"
-n=$(( n - $limit ))
-if [ $n -lt 0 ]; then
-	n=0
-fi
-for j in `head -n $n tempclear`
-do
-	rm $backup__dir/sme/$i/mysql/$j && echo "$backup__dir/sme/$i/mysql/$j à été effacé"
-done
-rm tempclear
-}
-function f_cleandbftpovh {
-fonction="f_cleandbftpovh"
-f_debug $fonction
-i=$1
-i=`cat ftpovh.dat|grep $i`
-coef=`echo $i|cut -f 8 -d";"`
-trans=`echo $i|cut -f 5 -d";"|sed 's/-/ /'|wc -w`
-let coeftot=$coef*$trans
-i=`echo $i|cut -f 1 -d";"`
-echo "clean des backup de $i"
-ls $backup__dir/ftpovh/$i/files|grep tar.gz|grep -v Jan|grep -v Feb|grep -v Mar|grep -v Apr|grep -v May|grep -v Jun|grep -v Jul|grep -v Aug|grep -v Sep|grep -v Oct|grep -v Nov|grep -v Dec>tempclear
-let limit=$nb__db*$coeftot
-echo "$i a droit à $limit backups de db"
-n=`cat tempclear|wc -l`
-echo "$i a $n backups de db"
-n=$(( n - $limit ))
-if [ $n -lt 0 ]; then
-	n=0
-fi
-head -n $n tempclear
-for j in `head -n $n tempclear`
-do
-	rm $backup__dir/ftpovh/$i/mysql/$j && echo "$backup__dir/ftpovh/$i/mysql/$j à été effacé"
-done
-rm tempclear
-}
-function f_backupexception {
-wget -q http://www.$exception.biz/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr 2>>$pwd_init/log/error.log
-echo "Patience, ca download . . ."
-rsync -qaEz -e ssh login@$exception.biz:$except_path $backup__dir/exception/$exception/ATG-current/
-echo "Patience, ca compresse . . ."
-tar -cpzf $backup__dir/exception/$exception/ATG-$date.tar.gz $backup__dir/exception/$exception/ATG-current/
-}
-function f_backupdbexception {
-wget -q http://www.$exception.biz/$genQL__dir/index.php --http-user=$htaccess__user --http-password=$htaccess__pwd_clr 2>>$pwd_init/log/error.log && echo db générée.
-echo "Patience, ca download . . ."
-rsync -qaEz -e ssh login@$exception.biz:$except_path/www/genQL/mysql/ exception/$exception/db/ 2>>$pwd_init/log/error.log && echo "Patience, ca compresse . . ."
-#Fonctions de backup cron, ces fonctions n'appellent les sites qui ne nécessitent pas l'entrée d'un mot de passe
-}
-function f_cron {
+function f_cron { #If genQL is launched with param "cron", it parses $datfile and launches the backup of db and sites according to day_db, hour_db, day_site and hour_site
 fonction="f_cron"
 f_debug $fonction
 priority=0
 while [ $priority -lt "11" ]
 do
-echo "Priority = $priority "  #remove after tests
-linenumber=1
+	echo "Priority = $priority "  #remove after tests
+	linenumber=1
 	for i in `cat $datfile`
 	do
 		prioritX=`echo "$i"|cut -f 18 -d";"`
@@ -870,33 +724,29 @@ linenumber=1
 			date=`date +%Y%m%d`
 			i=`echo $i|cut -f 1 -d";"`
 			if [ "$hour_db" != "" ]; then
-				f_backup $linenumber cron db
+				f_backup $linenumber db
 			fi
-			if [ "`date +%d`" = "01" ]; then
-				f_backupsme $i
-			elif [ "`date +%d`" != "01" ]; then
-				if [ "$day_site" != "" ]; then
+			if [ "`date +%d`" = "03" ]; then
+				f_backup $linenumber full
+			elif [ "$day_site" != "" ]; then
 					if [ "$hour_site" != "" ]; then
-						f_backupsme $i
+						f_backup $linenumber full
 					fi
 				fi
 			fi
 		fi
 	linenumber=$(( linenumber + 1 ))
 	done
-let priority=$priority+1
+	let priority=$priority+1
 done
-if [ "date +%H" = "1" ]; then
-	f_maillog
-fi
 f_exit
 }
-function f_randomhour {
+function f_randomhour { #gets a random hour to do the backup (function supposed to get some AI)
 fonction="f_randomhour"
 f_debug $fonction
 let R=$RANDOM%24+100 &&R=`echo $R|cut -c 2-3`
 }
-function f_randomday {
+function f_randomday { #gets a random day to do the backup (function supposed to get some AI)
 fonction="f_randomday"
 f_debug $fonction
 let d=$RANDOM%700/100+1 && if [ $d -eq 1 ]; then d="Mon"
@@ -918,15 +768,12 @@ else
 	echo "argument not known, arg can be \"cron\""
 fi
 #TODOLIST
-function f_checkbackup {
+function f_checkbackup { # supposed to add some checksums
 #si heure=23; check récursivement dans tous les dossiers sql pour voir si un backup db a été effectué!)
 echo lol
 }
-function f_countbackup {
-#a placer dans exi
-#if heure=23
-#compter le nombre de db/sites a backupper selon les fichiers dat
-#faire une var qui fait +1 chaque fois que un site/db est backuppé
-#en fin de journée les chiffres doivent correspondre.
+function f_countbackup { # check that amount of backup files = theoric number according to $datfile
+#a placer dans exi if heure=23 compter le nombre de db/sites a backupper selon les fichiers dat
+#faire une var qui fait +1 chaque fois que un site/db est backuppé en fin de journée les chiffres doivent correspondre.
 echo lol
 }
