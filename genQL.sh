@@ -79,7 +79,6 @@ echo "allows to hide text in editor"
 ################################################################################
 }
 # 1. We Declare the variables
-function f_vars { #remove this line
 pwd_init=`pwd` # don't edit this one !
 admin__mail="lol@here" # where should the logs be mailed?
 backup__dir="backup" #what is the directory to store the backup in (usefull for testing)
@@ -87,11 +86,9 @@ genQL__dir="genQL" #name of the dir on the server
 rsabits=4096 #set the size of RSA key you want
 datfile=datfile.dat #which datfile should be used
 htstrength=18 #desired size of htaccess credentials.
-conffile=genQL.conf #which conf file should be used
 debug=0 # Debug mode (1 Enable - 0 Disable )
 mkdir -p var log $backup__dir && touch $datfile # 2. We create the required foldertree
 echo "$0 $1 started on `date +%Y%m%d` at `date +%R` " >> log/backup.log # Start is logged
-} # remove
 function f_debug { # Debug mode helps tracing where crashes occur (if $debug = 1)
 if [ "x$debug" = "x1" ]; then
 	echo "debug = $1"  && echo "pwd = `pwd`" && 
@@ -113,7 +110,7 @@ if [ `date +%H` = 23 ]; then # Time of mail sending is 23 - if you want the log 
 	echo " " >> log/genQL.log
 	for z in `ls log/`
 		do
-		if [ "x$z" != "genQL.log" ]; then
+		if [ "x$z" != "xgenQL.log" ]; then
 			echo " " >> log/genQL.log
 			echo $z >> log/genQL.log
 			cat log/$z >> log/genQL.log
@@ -143,8 +140,7 @@ if [ "x$1" = "x" ]; then
 	return 1
 fi
 }
-#  Before we do anything, we check if the script isn't allready running: 
-scriptname=`basename $0`
+scriptname=`basename $0` #  Before we do anything, we check if the script isn't allready running: 
 pidfile=$pwd_init/var/${scriptname}.pid
 if [ -f ${pidfile} ]; then
 	oldpid=`cat ${pidfile}`
@@ -205,7 +201,7 @@ echo "What is the site's dns (compulsary)"
 read dns
 f_isempty $dns
 if [ "x$?" = "x1" ]; then
-	return 0
+	return 1
 fi
 if [ "`cat $datfile | grep $dns`" != '' ]; then
 	echo "$dns is allready in $datfile, please check and try again!"
@@ -230,6 +226,9 @@ fi
 echo "What is your login for that protocol (compulsary)"
 read l0gin
 f_isempty $l0gin
+if [ "x$?" = "x1" ]; then
+	return 1
+fi
 if [ "x$protocol" = "xftp" ]; then
 	echo "What is your ftp password"
 	read ftpassword
@@ -282,6 +281,9 @@ echo "What's the site's path on the server?"
 echo "!!Start at / for ssh and at ~ for ftp!!"
 read rpath
 f_isempty $rpath
+if [ "x$?" = "x1" ]; then
+	return 1
+fi
 echo "At what time should the site be backed up? (defaults random)"
 read timesite
 if [ "x$timesite" = "x" ]; then
@@ -333,12 +335,21 @@ fi
 echo "Please enter the name of the database:"
 read db
 f_isempty $db
+if [ "x$?" = "x1" ]; then
+	return 1
+fi
 echo "Please enter the name of that database's user:"
 read user
 f_isempty $user
+if [ "x$?" = "x1" ]; then
+	return 1
+fi
 echo "Please enter the corresponding password:"
 read pass
 f_isempty $pass
+if [ "x$?" = "x1" ]; then
+	return 1
+fi
 # </DATA RECOLLECTION>
 ########################################
 # <FILE GENERATION>
@@ -405,12 +416,7 @@ echo "$dns;$active;$protocol;$l0gin;$ftpassword;$sshkeyname;$loginhtacces;$passh
 #		ssh $site -l root "chown -R apache:$rep /home/sites/$site/web/" && echo "chown done"
 # Eapeasy ! but so far, just:
 tar -czf var/$dns.tar.gz var/$dns && rm -Rf var/$dns && echo "########################################" && echo "Everything has been generated as should be, you can now proceed to upload"
-echo "/var/$dns.tar.gz in order to place the $genQL__dir" 
-if [ "x$protocol" = "xssh" ]; then
-	if [ "x$sharedkey" = "xn" ]; then
-		echo "key.$sshkeyname in the ~/.ssh/authorized_keys"
-	fi
-fi
+echo "var/$dns.tar.gz in order to place the $genQL__dir - Don't forget to put the shared key on the server!" 
 echo "########################################"
 #Don't forget to put the right permissions on database with "mysql -u root -p"
 # REVOKE ALL PRIVILEGES ON `dbname` . * FROM 'dbuser'@'localhost';
@@ -445,13 +451,6 @@ echo "</body>" >> log/index.html
 echo "</html>" >> log/index.html
 echo "html log generated"
 return 0
-}
-function f_list { # lists $datfile
-fonction="f_list"
-f_debug $fonction
-echo "press q to quit the list, use arrows to move"
-sleep 2
-less -N $datfile && return 0
 }
 function f_remove { # to remove a site from $datfile
 fonction="f_remove"
@@ -619,10 +618,12 @@ do
 			hour_site=`echo "$i"|cut -f 12 -d";"|grep \`date +%H\``
 			date=`date +%Y%m%d`
 			i=`echo $i|cut -f 1 -d";"`
-			if [ "$hour_db" != "" ]; then
-				f_backup $linenumber db
+			if [ "$day_db" != "" ]; then
+				if [ "$hour_db" != "" ]; then
+					f_backup $linenumber db
+				fi
 			fi
-			if [ "`date +%d`" = "03" ]; then
+			if [ "`date +%d`" = "01" ]; then
 				f_backup $linenumber full
 			elif [ "$day_site" != "" ]; then
 					if [ "$hour_site" != "" ]; then
