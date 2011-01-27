@@ -37,15 +37,15 @@ echo "allows to hide text in editor"
 # V0.7 Big Leap Forward
 # 
 # This is a big major release, many core modifictations in the script : Optimisation and security.
-# cleanup for readability/editablility
-# ==> conf and dat files have changed format and are not retrocompatible.
+# cleanup for readability/editablility ==> conf and dat files have changed format and are not retrocompatible.
 # Security : Include Sets of RSA keys for hosts to backup (by managing id_rsa generation and changes according to the hosts) - In progress
-# Security : Use different .htaccess login/password for each site : Allmost done
-# - use of uuencode in randomness pass generation - done
-# Added support for various config/dat files through simple variable - done
+# Security : Use different .htaccess login/password for each site
+# - use of uuencode in randomness pass generation
+# Added support for various config/dat files through simple variable
 # Merge all .dat files in a single one - This will render the script more flexible - Done, but now I need to adapt the rest of the script
 # Removed many menus.
 # no more conf file (to few general options now to justify)
+# Just corrected a run error due to an excessive fi
 ############
 # dat file specifications: Each line represents a site to backup 
 # dns;active;protocol;l0gin;ftpassword;sshkeyname;loginhtacces;passhtaccess;altdns;port;rpath;timesite;daysite;timedb;daydb;coef;GB;priority;pingtest
@@ -80,13 +80,14 @@ echo "allows to hide text in editor"
 }
 # 1. We Declare the variables
 pwd_init=`pwd` # don't edit this one !
-admin__mail="lol@here" # where should the logs be mailed?
+admin__mail="jupiter126@gmail.com" # where should the logs be mailed?
 backup__dir="backup" #what is the directory to store the backup in (usefull for testing)
 genQL__dir="genQL" #name of the dir on the server
 rsabits=4096 #set the size of RSA key you want
 datfile=datfile.dat #which datfile should be used
 htstrength=18 #desired size of htaccess credentials.
-debug=0 # Debug mode (1 Enable - 0 Disable )
+debug=1 # Debug mode (1 Enable - 0 Disable )
+##########DONE FOR THE VARS
 mkdir -p var log $backup__dir && touch $datfile # 2. We create the required foldertree
 echo "$0 $1 started on `date +%Y%m%d` at `date +%R` " >> log/backup.log # Start is logged
 function f_debug { # Debug mode helps tracing where crashes occur (if $debug = 1)
@@ -156,7 +157,7 @@ function m_main { # Main Menu (displayed if genQL is called without args)
 while [ 1 ]
 do
 	PS3='Choose a number: '
-	select choix in "genQL" "Backup" "(De)Activate" "Delete" "Restore" "Quit"
+	select choix in "genQL" "Backup" "De_Activate" "Delete" "Restore" "Quit"
 	do
 		echo " ";echo "####################################";echo " "
 		break
@@ -164,10 +165,10 @@ do
 	case $choix in
 		genQL) 		f_genQL ;;
 		Backup)		m_backup ;;
-		Avtive)		f_activate ;;
+		De_Avtivate)	f_activate ;;
 		Delete)		f_remove ;;
 		Restore)	f_restore ;;
-		quit)		echo "errors of this session:";cat $pwd_init/log/error.log;echo " ";echo "bye ;)";f_exit ;;
+		Quit)		echo "errors of this session:";cat $pwd_init/log/error.log;echo " ";echo "bye ;)";f_exit ;;
 		*)		f_nope ;;
 	esac
 done
@@ -176,16 +177,16 @@ function m_backup { # backup menu
 while [ 1 ]
 do
 	PS3='Choose a number: '
-	select choix in "Backup a site" "Backup a db" "Backup everything" "Back"
+	select choix in "Backup_Site" "Backup_db" "Backup_everything" "Back"
 	do
 		echo " ";echo "####################################";echo " "
 		break
 	done
 	case $choix in
-		Site) 		echo "Which site would you like to backup?";f_backup1site 1 ;;
-		Db)		echo "Which db would you like to backup?";f_backup1site 0 ;;
-		Everything)	f_backupeverything ;;
-		Back) ;;
+		Backup_Site) 		echo "Which site would you like to backup?";f_backup1site 1 ;;
+		Backup_db)		echo "Which db would you like to backup?";f_backup1site 0 ;;
+		Backup_everything)	f_backupeverything ;;
+		Back) 			return 0 ;;
 		*)		f_nope ;;
 	esac
 done
@@ -357,7 +358,7 @@ echo "Data Recollection complete, adding config to $datfile and preparing files 
 touch $datfile
 mkdir -p var/$dns/$genQL__dir/mysql
 #index.php
-echo '<?' > var/$dns/$genQL__dir/index.php
+echo '<?php' > var/$dns/$genQL__dir/index.php
 echo \$rep_backup\ \=\ \'.\/mysql\/\'\; >> var/$dns/$genQL__dir/index.php
 echo '$heure_j = date("H-i");' >> var/$dns/$genQL__dir/index.php
 echo '$date_j = date("Ymd");' >> var/$dns/$genQL__dir/index.php
@@ -384,8 +385,7 @@ echo "require valid-user" >> var/$dns/$genQL__dir/.htaccess
 echo "</Limit>" >> var/$dns/$genQL__dir/.htaccess
 loginhtacces=`head -c $htstrength < /dev/urandom | uuencode -m - | tail -n 2 | head -n 1`
 passhtaccess=`head -c $htstrength < /dev/urandom | uuencode -m - | tail -n 2 | head -n 1`
-htpasswd -bc htpassword $loginhtacces $passhtaccess
-#echo "$htaccess__user:$htaccess__pwd_crptd">>$genQL__dir/.htpasswd
+htpasswd -bc htpassword "$loginhtacces" "$passhtaccess" && mv htpassword var/$dns/$genQL__dir/.htpasswd
 touch var/$dns/$genQL__dir/index.html
 echo "AuthUserFile "$rpath"/$genQL__dir/mysql/.htpasswd" >> var/$dns/$genQL__dir/mysql/.htaccess
 echo "AuthGroupFile /dev/null" >> var/$dns/$genQL__dir/mysql/.htaccess
@@ -423,10 +423,11 @@ echo "########################################"
 # GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON `dbname` . * TO 'dbuser'@'localhost';
 }
 function f_enablesiteauth { # called with $linenumber as arg ! - sets the key in place for present server to backup.
-keey=$0
+keey=$1 && keeey=`sed $keey'q;d' $datfile|cut -f 6 -d";"`
+echo $keeey
 fonction="f_enablesiteauth"
 f_debug $fonction
-cp var/keys/key.`sed $keey'q;d' $datfile|cut -f 6 -d";"` /home/`whoami`/.ssh/id_rsa && echo "key of `sed $keey'q;d' $datfile|cut -f 1 -d";"` has been activated" && echo "key of `sed $keey'q;d' $datfile|cut -f 1 -d";"` has been activated" >> log/backup.log 2>>$pwd_init/log/error.log
+cp var/keys/key.$keeey /home/`whoami`/.ssh/id_rsa && echo "key of $keeey has been activated" && echo "key of $keeey has been activated" >> log/backup.log 2>>$pwd_init/log/error.log
 }
 function f_makehtmlist { # This function puts the logs in xhtml format (you can customize the css)
 echo "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">" > log/index.html
@@ -476,7 +477,7 @@ fonction="f_backupsite"
 f_debug $fonction
 f_variables $linenumber
 date=`date +%Y%m%d`
-if [ "x$active" = "1"  ]; then
+if [ "x$active" = "x1"  ]; then
 	f_ping $dns
 	if [ "x$?" = "x1" ]; then
 		mkdir -p $backup__dir/$dns/files $backup__dir/$dns/mysql
@@ -626,9 +627,8 @@ do
 			if [ "`date +%d`" = "01" ]; then
 				f_backup $linenumber full
 			elif [ "$day_site" != "" ]; then
-					if [ "$hour_site" != "" ]; then
+				if [ "$hour_site" != "" ]; then
 						f_backup $linenumber full
-					fi
 				fi
 			fi
 		fi
