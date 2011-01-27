@@ -428,6 +428,7 @@ echo $keeey
 fonction="f_enablesiteauth"
 f_debug $fonction
 cp var/keys/key.$keeey /home/`whoami`/.ssh/id_rsa && echo "key of $keeey has been activated" && echo "key of $keeey has been activated" >> log/backup.log 2>>$pwd_init/log/error.log
+return 0
 }
 function f_makehtmlist { # This function puts the logs in xhtml format (you can customize the css)
 echo "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">" > log/index.html
