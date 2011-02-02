@@ -33,49 +33,10 @@ echo "allows to hide text in editor"
 # !!!!!!!! backup, unless you know what you are doing             !!!!!!!!!!!!!
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-# TODOLIST
-# V0.7 Big Leap Forward
-# 
-# This is a big major release, many core modifictations in the script : Optimisation and security.
-# cleanup for readability/editablility ==> conf and dat files have changed format and are not retrocompatible.
-# Security : Include Sets of RSA keys for hosts to backup (by managing id_rsa generation and changes according to the hosts) - In progress
-# Security : Use different .htaccess login/password for each site
-# - use of uuencode in randomness pass generation
-# Added support for various config/dat files through simple variable
-# Merge all .dat files in a single one - This will render the script more flexible - Done, but now I need to adapt the rest of the script
-# Removed many menus.
-# no more conf file (to few general options now to justify)
-# Just corrected a run error due to an excessive fi
-############
-# dat file specifications: Each line represents a site to backup 
-# dns;active;protocol;l0gin;ftpassword;sshkeyname;loginhtacces;passhtaccess;altdns;port;rpath;timesite;daysite;timedb;daydb;coef;GB;priority;pingtest
-#  dns: Contains the dns of the site to save
-#  active: 1 if site's backup is active ; 0 if it's inactive
-#  protocol: ftp or ssh
-#  login: Which login to use to login to the site
-#  pass: Password for login (ONLY for FTP ; for ssh, RSA key-authentication is used)
-#  sshkeyname; name of the ssh key to be used
-#  loginhtaccess: login to be used for the site's htaccess
-#  passhtaccess: pass to be used for the site's htaccess
-#  altdns: Sometimes, the ftp to backup a site doesn't have the same address as the site itself, this is where you declare it
-#  port: does the ftp/ssh service run on a particular port?
-#  rpath: Where on the server is the directory? (important for the .htaccess)
-#  timesite: Time where the site should be backed-up
-#  daysite: Day the site should be backed up
-#  timedb: time of the db backup
-#  daydb: Day the DB should be backed up
-#  coef: coeficient of space
-#  GB: Allowed backup size
-#  Priority: Allows to define which sites are the most important ones to backup
-#  Pingtest: should we perform a pingtest with this site?
-#####
-# Mail loglevel : 0 NONE - 1 ERRORS ONLY - 2 Everything - 3 - 4 - 5
-# !!! When mixing ovh hosted accounts with custom - done
-#  * port backupchecks in all backups!
-#  * Implémentation du restore de db seulement
-#  * Implementer le controle de checksums
-#  * Uniformiser les langues (anglais ou fr ou internationaliser le script?)
-#----------- V1.0 ???????  - One day perhaps !
+# Changelog
+# V0.71
+# Stupid/simple fixes
+
 ################################################################################
 }
 # 1. We Declare the variables
@@ -250,9 +211,9 @@ elif [ "x$protocol" = "xssh" ]; then
 			ls var/keys/|cat -n
 			echo "Which is the key that should be used?"
 			read key
-			sshkeyname=`ls var/key | sed -n "$key"p`
+			sshkeyname=`ls var/keys | sed -n "$key"p`
 		elif [ "x$sharedkey" = "xn" ]; then
-			echo "What should be the key's name (!avoid a name that's allready in use!)"
+			echo "What should be the key's name (name it key.xxx and !avoid a name that's allready in use!)"
 			read sshkeyname
 			for i in `ls var/keys/`
 				do
@@ -262,9 +223,9 @@ elif [ "x$protocol" = "xssh" ]; then
 				fi
 				done
 			echo "Patience ...  $rsabits bits RSA keyset is being generated"
-			ssh-keygen -b $rsabits -t rsa -f key.$sshkeyname
-			mv key.$sshkeyname var/keys/
-			mv key.$sshkeyname.pub var/$dns/
+			ssh-keygen -b $rsabits -t rsa -f $sshkeyname
+			mv $sshkeyname var/keys/
+			mv $sshkeyname.pub var/$dns/
 		else
 			echo "y or n ... Please try again"
 			return 1
@@ -427,7 +388,7 @@ keey=$1 && keeey=`sed $keey'q;d' $datfile|cut -f 6 -d";"`
 echo $keeey
 fonction="f_enablesiteauth"
 f_debug $fonction
-cp var/keys/key.$keeey /home/`whoami`/.ssh/id_rsa && echo "key of $keeey has been activated" && echo "key of $keeey has been activated" >> log/backup.log 2>>$pwd_init/log/error.log
+cp var/keys/$keeey /home/`whoami`/.ssh/id_rsa && echo "key of $keeey has been activated" && echo "key of $keeey has been activated" >> log/backup.log 2>>$pwd_init/log/error.log
 return 0
 }
 function f_makehtmlist { # This function puts the logs in xhtml format (you can customize the css)
@@ -623,6 +584,8 @@ do
 			if [ "$day_db" != "" ]; then
 				if [ "$hour_db" != "" ]; then
 					f_backup $linenumber db
+				else
+					echo "No db backup for $i at this time"
 				fi
 			fi
 			if [ "`date +%d`" = "01" ]; then
@@ -630,6 +593,8 @@ do
 			elif [ "$day_site" != "" ]; then
 				if [ "$hour_site" != "" ]; then
 						f_backup $linenumber full
+				else
+					echo "No site backup for $i at this time"
 				fi
 			fi
 		fi

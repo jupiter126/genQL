@@ -10,3 +10,26 @@ This script has the following dependencies:
  * apache2-utils sharutils (debian packages for htpasswd and uuencode)
 
 
+####
+# dat file specifications: Each line represents a site to backup 
+# dns;active;protocol;l0gin;ftpassword;sshkeyname;loginhtacces;passhtaccess;altdns;port;rpath;timesite;daysite;timedb;daydb;coef;GB;priority;pingtest
+#  dns: Contains the dns of the site to save
+#  active: 1 if site's backup is active ; 0 if it's inactive
+#  protocol: ftp or ssh
+#  login: Which login to use to login to the site
+#  pass: Password for login (ONLY for FTP ; for ssh, RSA key-authentication is used)
+#  sshkeyname; name of the ssh key to be used
+#  loginhtaccess: login to be used for the site's htaccess
+#  passhtaccess: pass to be used for the site's htaccess
+#  altdns: Sometimes, the ftp to backup a site doesn't have the same address as the site itself, this is where you declare it
+#  port: does the ftp/ssh service run on a particular port?
+#  rpath: Where on the server is the directory? (important for the .htaccess)
+#  timesite: Time where the site should be backed-up
+#  daysite: Day the site should be backed up
+#  timedb: time of the db backup
+#  daydb: Day the DB should be backed up
+#  coef: coeficient of space
+#  GB: Allowed backup size
+#  Priority: Allows to define which sites are the most important ones to backup
+#  Pingtest: should we perform a pingtest with this site?
+#####

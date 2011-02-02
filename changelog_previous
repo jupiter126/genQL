@@ -67,4 +67,14 @@ When the changelog gets too long in the script, I put it's oldes items here
 #		REVOKE ALL PRIVILEGES ON `$dbname` . * FROM '$username'@'localhost';
 #		GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON `$dbname` . * TO '$username'@'localhost';
 #  * did a bit more of english conversion... (way to go :'s)
- 
+# V0.7 Big Leap Forward
+# This is a big major release, many core modifictations in the script : Optimisation and security.
+# cleanup for readability/editablility ==> conf and dat files have changed format and are not retrocompatible.
+# Include Sets of RSA keys for hosts to backup (by managing id_rsa generation and changes according to the hosts) - In progress
+# Use different .htaccess login/password for each site (use of uuencode in randomness user/pass generation)
+# Added support for various config/dat files through simple variable
+# Merge all .dat files in a single one - This will render the script more flexible - Done, but now I need to adapt the rest of the script
+# Removed many menus.
+# no more conf file (to few general options now to justify)
+# Just corrected a run error due to an excessive fi
+# When mixing ovh hosted accounts with custom
