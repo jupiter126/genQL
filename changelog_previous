@@ -67,6 +67,10 @@ When the changelog gets too long in the script, I put it's oldes items here
 #		REVOKE ALL PRIVILEGES ON `$dbname` . * FROM '$username'@'localhost';
 #		GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON `$dbname` . * TO '$username'@'localhost';
 #  * did a bit more of english conversion... (way to go :'s)
+
+# Many months have passed and I did a major rewrite of the script, as well as published it on github
+# On this occasion, i skipped 0.6 branch and now is 0.7
+
 # V0.7 Big Leap Forward
 # This is a big major release, many core modifictations in the script : Optimisation and security.
 # cleanup for readability/editablility ==> conf and dat files have changed format and are not retrocompatible.
